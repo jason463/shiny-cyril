@@ -20,8 +20,8 @@ export async function verifyPassword(
   return bcrypt.compare(password, hash);
 }
 
-export async function createSession(userId: string): Promise<string> {
-  const token = await new SignJWT({ userId })
+export async function createSession(userId: string, email?: string, name?: string | null): Promise<string> {
+  const token = await new SignJWT({ userId, email, name: name || null })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
@@ -39,14 +39,18 @@ export async function createSession(userId: string): Promise<string> {
   return token;
 }
 
-export async function getSession(): Promise<{ userId: string } | null> {
+export async function getSession(): Promise<{ userId: string; email?: string; name?: string | null } | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
 
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
-    return { userId: payload.userId as string };
+    return {
+      userId: payload.userId as string,
+      email: payload.email as string | undefined,
+      name: (payload.name as string | null) || null,
+    };
   } catch {
     return null;
   }
@@ -56,12 +60,24 @@ export async function getCurrentUser() {
   const session = await getSession();
   if (!session) return null;
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { id: true, email: true, name: true },
-  });
+  // Try DB lookup first, fall back to JWT claims (needed on Vercel
+  // where each serverless container has its own ephemeral SQLite)
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { id: true, email: true, name: true },
+    });
+    if (user) return user;
+  } catch {
+    // DB may not have this user in this container
+  }
 
-  return user;
+  // Fall back to JWT claims
+  if (session.email) {
+    return { id: session.userId, email: session.email, name: session.name || null };
+  }
+
+  return null;
 }
 
 export async function destroySession() {
