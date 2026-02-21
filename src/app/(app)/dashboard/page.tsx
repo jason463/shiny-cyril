@@ -42,7 +42,7 @@ export default async function DashboardPage() {
       }),
     ]);
 
-  const medsTaken = medications.filter((m) => m.logs.length > 0).length;
+  const medsTaken = medications.filter((m: (typeof medications)[number]) => m.logs.length > 0).length;
   const totalMeds = medications.length;
 
   const greeting = (() => {
