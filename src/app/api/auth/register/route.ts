@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       },
     });
 
-    await createSession(user.id, user.email, user.name, passwordHash);
+    await createSession(user.id);
 
     return NextResponse.json({
       user: { id: user.id, email: user.email, name: user.name },
