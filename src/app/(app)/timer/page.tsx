@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Timer, Play, Square, UtensilsCrossed } from "lucide-react";
+import { Timer, Play, Square, UtensilsCrossed, HelpCircle } from "lucide-react";
 
 interface MealEntry {
   id: string;
@@ -17,6 +17,8 @@ export default function MealTimerPage() {
   const [recentMeals, setRecentMeals] = useState<MealEntry[]>([]);
   const [mealNote, setMealNote] = useState("");
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [showMmcInfo, setShowMmcInfo] = useState(false);
 
   const targetSeconds = interval * 3600;
 
@@ -99,6 +101,22 @@ export default function MealTimerPage() {
         <p className="mt-1 text-sage-500">
           Track time between meals for MMC optimization
         </p>
+        <button
+          onClick={() => setShowMmcInfo(!showMmcInfo)}
+          className="mt-2 inline-flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 transition-colors"
+        >
+          <HelpCircle className="h-3.5 w-3.5" />
+          What is MMC?
+        </button>
+        {showMmcInfo && (
+          <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm leading-relaxed text-sage-700">
+            The migrating motor complex (MMC) is a wave-like cleaning motion
+            your gut performs between meals. It typically needs 3–5 hours of
+            fasting to complete a full cycle. Spacing your meals gives your gut
+            time to sweep out bacteria and debris — a key part of managing SIBO
+            and other conditions.
+          </div>
+        )}
       </div>
 
       {/* Interval Selector */}
@@ -187,13 +205,13 @@ export default function MealTimerPage() {
           <div className="mt-6 text-center">
             {running && !mmcReady && (
               <p className="text-sage-600">
-                Your MMC needs more time. Try to wait before eating.
+                Your gut is still cleaning. Try to wait before eating.
               </p>
             )}
             {running && mmcReady && (
               <p className="text-green-600 font-medium">
-                Your migrating motor complex has had enough time to complete a
-                full cycle. You&apos;re clear to eat when ready.
+                Your MMC has completed a full cleaning cycle. You&apos;re clear
+                to eat when ready.
               </p>
             )}
           </div>

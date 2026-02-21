@@ -14,8 +14,8 @@ export default function FounderStory() {
             </p>
 
             <p className="leading-relaxed">
-              I&apos;m currently treating my own gut condition — dealing with
-              the full gauntlet of antimicrobials, prokinetics, meal timing,
+              I&apos;ve been managing my own gut condition — dealing with the
+              full gauntlet of antimicrobials, prokinetics, meal timing,
               probiotics, and all the phases in between. For months, I tracked
               everything in a mess of spreadsheets, reminders, and notes
               scattered across three different apps.

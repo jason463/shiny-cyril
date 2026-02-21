@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Activity, Plus, Trash2, X } from "lucide-react";
+import { Activity, Plus, Trash2, X, Pencil } from "lucide-react";
 
 interface Symptom {
   id: string;
@@ -29,6 +29,8 @@ const commonSymptoms = [
 export default function SymptomsPage() {
   const [symptoms, setSymptoms] = useState<Symptom[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [severity, setSeverity] = useState(5);
   const [notes, setNotes] = useState("");
@@ -45,25 +47,50 @@ export default function SymptomsPage() {
     fetchSymptoms();
   }, [fetchSymptoms]);
 
+  function openForm(symptom?: Symptom) {
+    if (symptom) {
+      setEditingId(symptom.id);
+      setName(symptom.name);
+      setSeverity(symptom.severity);
+      setNotes(symptom.notes || "");
+    } else {
+      setEditingId(null);
+      setName("");
+      setSeverity(5);
+      setNotes("");
+    }
+    setShowForm(true);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name) return;
 
-    await fetch("/api/symptoms", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, severity, notes }),
-    });
+    if (editingId) {
+      await fetch("/api/symptoms", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingId, name, severity, notes }),
+      });
+    } else {
+      await fetch("/api/symptoms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, severity, notes }),
+      });
+    }
 
+    setShowForm(false);
+    setEditingId(null);
     setName("");
     setSeverity(5);
     setNotes("");
-    setShowForm(false);
     fetchSymptoms();
   }
 
   async function handleDelete(id: string) {
     await fetch(`/api/symptoms?id=${id}`, { method: "DELETE" });
+    setConfirmingDeleteId(null);
     fetchSymptoms();
   }
 
@@ -81,7 +108,6 @@ export default function SymptomsPage() {
     return "Very Severe";
   }
 
-  // Group symptoms by date
   const grouped = symptoms.reduce(
     (acc: Record<string, Symptom[]>, symptom) => {
       const date = new Date(symptom.timestamp).toLocaleDateString("en-US", {
@@ -106,7 +132,7 @@ export default function SymptomsPage() {
           </p>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => openForm()}
           className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700"
         >
           <Plus className="h-4 w-4" />
@@ -114,16 +140,15 @@ export default function SymptomsPage() {
         </button>
       </div>
 
-      {/* Add Symptom Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-sage-900">
-                Log Symptom
+                {editingId ? "Edit Symptom" : "Log Symptom"}
               </h2>
               <button
-                onClick={() => setShowForm(false)}
+                onClick={() => { setShowForm(false); setEditingId(null); }}
                 className="rounded-lg p-1 text-sage-400 hover:bg-sage-100"
               >
                 <X className="h-5 w-5" />
@@ -199,14 +224,13 @@ export default function SymptomsPage() {
                 type="submit"
                 className="w-full rounded-lg bg-green-600 py-2.5 font-medium text-white transition-colors hover:bg-green-700"
               >
-                Log Symptom
+                {editingId ? "Save Changes" : "Log Symptom"}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Symptoms List */}
       {loading ? (
         <div className="text-center py-12 text-sage-400">Loading...</div>
       ) : symptoms.length === 0 ? (
@@ -253,12 +277,37 @@ export default function SymptomsPage() {
                         minute: "2-digit",
                       })}
                     </span>
-                    <button
-                      onClick={() => handleDelete(symptom.id)}
-                      className="rounded-lg p-1.5 text-sage-400 hover:bg-red-50 hover:text-red-500"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => openForm(symptom)}
+                        className="rounded-lg p-1.5 text-sage-400 hover:bg-sage-100 hover:text-sage-600"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      {confirmingDeleteId === symptom.id ? (
+                        <div className="flex items-center gap-1 text-xs">
+                          <button
+                            onClick={() => handleDelete(symptom.id)}
+                            className="rounded-lg bg-red-100 px-2 py-1 font-medium text-red-600 hover:bg-red-200"
+                          >
+                            Yes
+                          </button>
+                          <button
+                            onClick={() => setConfirmingDeleteId(null)}
+                            className="rounded-lg bg-sage-100 px-2 py-1 font-medium text-sage-600 hover:bg-sage-200"
+                          >
+                            No
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmingDeleteId(symptom.id)}
+                          className="rounded-lg p-1.5 text-sage-400 hover:bg-red-50 hover:text-red-500"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

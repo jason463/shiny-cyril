@@ -62,6 +62,46 @@ export async function POST(request: Request) {
   }
 }
 
+export async function PATCH(request: Request) {
+  const session = await getAuthenticatedUser();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { id, mealName, foods, triggers, feelingAfter, notes } =
+      await request.json();
+
+    if (!id) {
+      return NextResponse.json({ error: "ID is required" }, { status: 400 });
+    }
+
+    const entry = await prisma.journalEntry.updateMany({
+      where: { id, userId: session.userId },
+      data: {
+        ...(mealName !== undefined && { mealName }),
+        ...(foods !== undefined && { foods }),
+        ...(triggers !== undefined && { triggers: triggers || null }),
+        ...(feelingAfter !== undefined && {
+          feelingAfter: feelingAfter ? parseInt(feelingAfter) : null,
+        }),
+        ...(notes !== undefined && { notes: notes || null }),
+      },
+    });
+
+    if (entry.count === 0) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json(
+      { error: "Something went wrong" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(request: Request) {
   const session = await getAuthenticatedUser();
   if (!session) {

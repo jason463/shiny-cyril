@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { UtensilsCrossed, Plus, X, Trash2 } from "lucide-react";
+import { UtensilsCrossed, Plus, X, Trash2, Pencil } from "lucide-react";
 
 interface JournalEntry {
   id: string;
@@ -39,6 +39,8 @@ const commonTriggers = [
 export default function JournalPage() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const [mealName, setMealName] = useState("Breakfast");
   const [foods, setFoods] = useState("");
   const [selectedTriggers, setSelectedTriggers] = useState<string[]>([]);
@@ -57,33 +59,64 @@ export default function JournalPage() {
     fetchEntries();
   }, [fetchEntries]);
 
+  function openForm(entry?: JournalEntry) {
+    if (entry) {
+      setEditingId(entry.id);
+      setMealName(entry.mealName);
+      setFoods(entry.foods);
+      setSelectedTriggers(entry.triggers ? entry.triggers.split(",") : []);
+      setFeelingAfter(entry.feelingAfter);
+      setNotes(entry.notes || "");
+    } else {
+      setEditingId(null);
+      setMealName("Breakfast");
+      setFoods("");
+      setSelectedTriggers([]);
+      setFeelingAfter(null);
+      setNotes("");
+    }
+    setShowForm(true);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!foods) return;
 
-    await fetch("/api/journal", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mealName,
-        foods,
-        triggers: selectedTriggers.join(",") || null,
-        feelingAfter,
-        notes,
-      }),
-    });
+    const payload = {
+      mealName,
+      foods,
+      triggers: selectedTriggers.join(",") || null,
+      feelingAfter,
+      notes,
+    };
 
+    if (editingId) {
+      await fetch("/api/journal", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingId, ...payload }),
+      });
+    } else {
+      await fetch("/api/journal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    setShowForm(false);
+    setEditingId(null);
     setMealName("Breakfast");
     setFoods("");
     setSelectedTriggers([]);
     setFeelingAfter(null);
     setNotes("");
-    setShowForm(false);
     fetchEntries();
   }
 
   async function handleDelete(id: string) {
     await fetch(`/api/journal?id=${id}`, { method: "DELETE" });
+    setConfirmingDeleteId(null);
     fetchEntries();
   }
 
@@ -95,7 +128,6 @@ export default function JournalPage() {
     );
   }
 
-  // Group by date
   const grouped = entries.reduce(
     (acc: Record<string, JournalEntry[]>, entry) => {
       const date = new Date(entry.timestamp).toLocaleDateString("en-US", {
@@ -122,7 +154,7 @@ export default function JournalPage() {
           </p>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => openForm()}
           className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700"
         >
           <Plus className="h-4 w-4" />
@@ -130,16 +162,15 @@ export default function JournalPage() {
         </button>
       </div>
 
-      {/* Add Entry Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/30 p-4 pt-16">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-sage-900">
-                Log Meal
+                {editingId ? "Edit Entry" : "Log Meal"}
               </h2>
               <button
-                onClick={() => setShowForm(false)}
+                onClick={() => { setShowForm(false); setEditingId(null); }}
                 className="rounded-lg p-1 text-sage-400 hover:bg-sage-100"
               >
                 <X className="h-5 w-5" />
@@ -244,14 +275,13 @@ export default function JournalPage() {
                 type="submit"
                 className="w-full rounded-lg bg-green-600 py-2.5 font-medium text-white transition-colors hover:bg-green-700"
               >
-                Log Entry
+                {editingId ? "Save Changes" : "Log Entry"}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Entries List */}
       {loading ? (
         <div className="text-center py-12 text-sage-400">Loading...</div>
       ) : entries.length === 0 ? (
@@ -295,8 +325,7 @@ export default function JournalPage() {
                           {entry.feelingAfter && (
                             <span
                               className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                feelingEmojis[entry.feelingAfter]?.color ||
-                                ""
+                                feelingEmojis[entry.feelingAfter]?.color || ""
                               }`}
                             >
                               {feelingEmojis[entry.feelingAfter]?.label}
@@ -322,12 +351,37 @@ export default function JournalPage() {
                           </p>
                         )}
                       </div>
-                      <button
-                        onClick={() => handleDelete(entry.id)}
-                        className="rounded-lg p-1.5 text-sage-400 hover:bg-red-50 hover:text-red-500"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => openForm(entry)}
+                          className="rounded-lg p-1.5 text-sage-400 hover:bg-sage-100 hover:text-sage-600"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        {confirmingDeleteId === entry.id ? (
+                          <div className="flex items-center gap-1 text-xs">
+                            <button
+                              onClick={() => handleDelete(entry.id)}
+                              className="rounded-lg bg-red-100 px-2 py-1 font-medium text-red-600 hover:bg-red-200"
+                            >
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => setConfirmingDeleteId(null)}
+                              className="rounded-lg bg-sage-100 px-2 py-1 font-medium text-sage-600 hover:bg-sage-200"
+                            >
+                              No
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmingDeleteId(entry.id)}
+                            className="rounded-lg p-1.5 text-sage-400 hover:bg-red-50 hover:text-red-500"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}

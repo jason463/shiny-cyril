@@ -17,7 +17,7 @@ export default function ProblemSection() {
           </p>
 
           <p className="text-lg leading-relaxed text-sage-600">
-            Most people end up cobbling together spreadsheets, note apps, phone
+            Most people end up cobbling together spreadsheets, notes apps, phone
             reminders, and sheer memory to keep it all straight. Some days you
             forget a supplement. Other days you eat too soon and wonder if
             you&apos;ve set your progress back. And when your doctor asks

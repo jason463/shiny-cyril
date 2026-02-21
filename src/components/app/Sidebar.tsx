@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   X,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -72,6 +73,18 @@ export default function Sidebar({ userName }: { userName?: string }) {
         {userName && (
           <p className="px-3 mb-2 text-xs text-sage-400 truncate">{userName}</p>
         )}
+        <Link
+          href="/settings"
+          onClick={() => setMobileOpen(false)}
+          className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+            pathname === "/settings"
+              ? "bg-green-50 text-green-700"
+              : "text-sage-600 hover:bg-sage-100 hover:text-sage-800"
+          }`}
+        >
+          <Settings className="h-5 w-5" strokeWidth={1.5} />
+          Settings
+        </Link>
         <button
           onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sage-600 transition-colors hover:bg-sage-100 hover:text-sage-800"
@@ -136,6 +149,18 @@ export default function Sidebar({ userName }: { userName?: string }) {
           })}
         </nav>
         <div className="border-t border-sage-200 p-3">
+          <Link
+            href="/settings"
+            onClick={() => setMobileOpen(false)}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              pathname === "/settings"
+                ? "bg-green-50 text-green-700"
+                : "text-sage-600 hover:bg-sage-100 hover:text-sage-800"
+            }`}
+          >
+            <Settings className="h-5 w-5" strokeWidth={1.5} />
+            Settings
+          </Link>
           <button
             onClick={handleLogout}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sage-600 transition-colors hover:bg-sage-100 hover:text-sage-800"

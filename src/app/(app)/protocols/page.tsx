@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { CalendarDays, Plus, X, Trash2, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { CalendarDays, Plus, X, Trash2, Check, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 
 interface Phase {
   id: string;
@@ -25,6 +25,8 @@ interface Protocol {
 export default function ProtocolsPage() {
   const [protocols, setProtocols] = useState<Protocol[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [phases, setPhases] = useState([
@@ -44,20 +46,44 @@ export default function ProtocolsPage() {
     fetchProtocols();
   }, [fetchProtocols]);
 
+  function openForm(protocol?: Protocol) {
+    if (protocol) {
+      setEditingId(protocol.id);
+      setName(protocol.name);
+      setDescription(protocol.description || "");
+    } else {
+      setEditingId(null);
+      setName("");
+      setDescription("");
+      setPhases([{ name: "", description: "", durationDays: 14 }]);
+    }
+    setShowForm(true);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name || phases.some((p) => !p.name)) return;
+    if (!name) return;
 
-    await fetch("/api/protocols", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, description, phases }),
-    });
+    if (editingId) {
+      await fetch("/api/protocols", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingId, name, description }),
+      });
+    } else {
+      if (phases.some((p) => !p.name)) return;
+      await fetch("/api/protocols", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description, phases }),
+      });
+    }
 
+    setShowForm(false);
+    setEditingId(null);
     setName("");
     setDescription("");
     setPhases([{ name: "", description: "", durationDays: 14 }]);
-    setShowForm(false);
     fetchProtocols();
   }
 
@@ -76,6 +102,7 @@ export default function ProtocolsPage() {
 
   async function handleDelete(id: string) {
     await fetch(`/api/protocols?id=${id}`, { method: "DELETE" });
+    setConfirmingDeleteId(null);
     fetchProtocols();
   }
 
@@ -121,7 +148,7 @@ export default function ProtocolsPage() {
           </p>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => openForm()}
           className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700"
         >
           <Plus className="h-4 w-4" />
@@ -129,16 +156,15 @@ export default function ProtocolsPage() {
         </button>
       </div>
 
-      {/* Add Protocol Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/30 p-4 pt-20">
           <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-sage-900">
-                New Protocol
+                {editingId ? "Edit Protocol" : "New Protocol"}
               </h2>
               <button
-                onClick={() => setShowForm(false)}
+                onClick={() => { setShowForm(false); setEditingId(null); }}
                 className="rounded-lg p-1 text-sage-400 hover:bg-sage-100"
               >
                 <X className="h-5 w-5" />
@@ -173,93 +199,94 @@ export default function ProtocolsPage() {
                 />
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-sage-700">
-                    Phases
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addPhase}
-                    className="text-sm text-green-600 hover:text-green-700 font-medium"
-                  >
-                    + Add phase
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {phases.map((phase, index) => (
-                    <div
-                      key={index}
-                      className="rounded-lg border border-sage-200 bg-sage-50 p-3"
+              {!editingId && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-sage-700">
+                      Phases
+                    </label>
+                    <button
+                      type="button"
+                      onClick={addPhase}
+                      className="text-sm text-green-600 hover:text-green-700 font-medium"
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-xs font-bold text-green-700">
-                          {index + 1}
-                        </span>
-                        <input
-                          type="text"
-                          value={phase.name}
-                          onChange={(e) =>
-                            updatePhase(index, "name", e.target.value)
-                          }
-                          placeholder="Phase name"
-                          required
-                          className="flex-1 rounded-lg border border-sage-200 bg-white px-3 py-1.5 text-sm text-sage-800 placeholder-sage-400 outline-none focus:border-green-400"
-                        />
-                        {phases.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removePhase(index)}
-                            className="text-sage-400 hover:text-red-500"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={phase.description}
-                          onChange={(e) =>
-                            updatePhase(index, "description", e.target.value)
-                          }
-                          placeholder="Description (optional)"
-                          className="flex-1 rounded-lg border border-sage-200 bg-white px-3 py-1.5 text-sm text-sage-800 placeholder-sage-400 outline-none focus:border-green-400"
-                        />
-                        <div className="flex items-center gap-1">
+                      + Add phase
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {phases.map((phase, index) => (
+                      <div
+                        key={index}
+                        className="rounded-lg border border-sage-200 bg-sage-50 p-3"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-xs font-bold text-green-700">
+                            {index + 1}
+                          </span>
                           <input
-                            type="number"
-                            value={phase.durationDays}
+                            type="text"
+                            value={phase.name}
                             onChange={(e) =>
-                              updatePhase(
-                                index,
-                                "durationDays",
-                                parseInt(e.target.value) || 1
-                              )
+                              updatePhase(index, "name", e.target.value)
                             }
-                            min="1"
-                            className="w-16 rounded-lg border border-sage-200 bg-white px-2 py-1.5 text-center text-sm text-sage-800 outline-none focus:border-green-400"
+                            placeholder="Phase name"
+                            required
+                            className="flex-1 rounded-lg border border-sage-200 bg-white px-3 py-1.5 text-sm text-sage-800 placeholder-sage-400 outline-none focus:border-green-400"
                           />
-                          <span className="text-xs text-sage-500">days</span>
+                          {phases.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removePhase(index)}
+                              className="text-sage-400 hover:text-red-500"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={phase.description}
+                            onChange={(e) =>
+                              updatePhase(index, "description", e.target.value)
+                            }
+                            placeholder="Description (optional)"
+                            className="flex-1 rounded-lg border border-sage-200 bg-white px-3 py-1.5 text-sm text-sage-800 placeholder-sage-400 outline-none focus:border-green-400"
+                          />
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              value={phase.durationDays}
+                              onChange={(e) =>
+                                updatePhase(
+                                  index,
+                                  "durationDays",
+                                  parseInt(e.target.value) || 1
+                                )
+                              }
+                              min="1"
+                              className="w-16 rounded-lg border border-sage-200 bg-white px-2 py-1.5 text-center text-sm text-sage-800 outline-none focus:border-green-400"
+                            />
+                            <span className="text-xs text-sage-500">days</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <button
                 type="submit"
                 className="w-full rounded-lg bg-green-600 py-2.5 font-medium text-white transition-colors hover:bg-green-700"
               >
-                Create Protocol
+                {editingId ? "Save Changes" : "Create Protocol"}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Protocols List */}
       {loading ? (
         <div className="text-center py-12 text-sage-400">Loading...</div>
       ) : protocols.length === 0 ? (
@@ -272,7 +299,8 @@ export default function ProtocolsPage() {
             No protocols yet
           </h3>
           <p className="mt-1 text-sage-500">
-            Create your first treatment protocol to start tracking phases.
+            Create a treatment protocol to track your progress through each
+            phase.
           </p>
         </div>
       ) : (
@@ -316,12 +344,41 @@ export default function ProtocolsPage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDelete(protocol.id);
+                        openForm(protocol);
                       }}
-                      className="rounded-lg p-1.5 text-sage-400 hover:bg-red-50 hover:text-red-500"
+                      className="rounded-lg p-1.5 text-sage-400 hover:bg-sage-100 hover:text-sage-600"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Pencil className="h-4 w-4" />
                     </button>
+                    {confirmingDeleteId === protocol.id ? (
+                      <div
+                        className="flex items-center gap-1 text-xs"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={() => handleDelete(protocol.id)}
+                          className="rounded-lg bg-red-100 px-2 py-1 font-medium text-red-600 hover:bg-red-200"
+                        >
+                          Yes
+                        </button>
+                        <button
+                          onClick={() => setConfirmingDeleteId(null)}
+                          className="rounded-lg bg-sage-100 px-2 py-1 font-medium text-sage-600 hover:bg-sage-200"
+                        >
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmingDeleteId(protocol.id);
+                        }}
+                        className="rounded-lg p-1.5 text-sage-400 hover:bg-red-50 hover:text-red-500"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                     {isExpanded ? (
                       <ChevronUp className="h-5 w-5 text-sage-400" />
                     ) : (
