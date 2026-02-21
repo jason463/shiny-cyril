@@ -122,7 +122,7 @@ export default function MedicationsPage() {
         </div>
         <button
           onClick={() => openForm()}
-          className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700"
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-green-600/20 transition-all hover:shadow-lg hover:brightness-110"
         >
           <Plus className="h-4 w-4" />
           Add Medication
@@ -130,15 +130,15 @@ export default function MedicationsPage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-sage-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-slide-up">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-sage-900">
                 {editingId ? "Edit Medication" : "Add Medication / Supplement"}
               </h2>
               <button
                 onClick={() => { setShowForm(false); setEditingId(null); }}
-                className="rounded-lg p-1 text-sage-400 hover:bg-sage-100"
+                className="rounded-xl p-1.5 text-sage-400 hover:bg-sage-50 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -146,7 +146,7 @@ export default function MedicationsPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-sage-700 mb-1">
+                <label className="block text-sm font-semibold text-sage-700 mb-1.5">
                   Name
                 </label>
                 <input
@@ -155,12 +155,12 @@ export default function MedicationsPage() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Rifaximin, Berberine"
                   required
-                  className="w-full rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 placeholder-sage-400 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                  className="w-full rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-sage-700 mb-1">
+                <label className="block text-sm font-semibold text-sage-700 mb-1.5">
                   Dosage
                 </label>
                 <input
@@ -169,19 +169,19 @@ export default function MedicationsPage() {
                   onChange={(e) => setDosage(e.target.value)}
                   placeholder="e.g., 550mg, 2 capsules"
                   required
-                  className="w-full rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 placeholder-sage-400 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                  className="w-full rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-sage-700 mb-1">
+                  <label className="block text-sm font-semibold text-sage-700 mb-1.5">
                     Frequency
                   </label>
                   <select
                     value={frequency}
                     onChange={(e) => setFrequency(e.target.value)}
-                    className="w-full rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                    className="w-full rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
                   >
                     <option>Once daily</option>
                     <option>Twice daily</option>
@@ -193,13 +193,13 @@ export default function MedicationsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-sage-700 mb-1">
+                  <label className="block text-sm font-semibold text-sage-700 mb-1.5">
                     Time of Day
                   </label>
                   <select
                     value={timeOfDay}
                     onChange={(e) => setTimeOfDay(e.target.value)}
-                    className="w-full rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                    className="w-full rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
                   >
                     <option>Morning</option>
                     <option>Afternoon</option>
@@ -211,7 +211,7 @@ export default function MedicationsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-sage-700 mb-1">
+                <label className="block text-sm font-semibold text-sage-700 mb-1.5">
                   Notes (optional)
                 </label>
                 <input
@@ -219,13 +219,13 @@ export default function MedicationsPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="e.g., Take on empty stomach"
-                  className="w-full rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 placeholder-sage-400 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                  className="w-full rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full rounded-lg bg-green-600 py-2.5 font-medium text-white transition-colors hover:bg-green-700"
+                className="w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 py-3 font-semibold text-white shadow-md shadow-green-600/20 transition-all hover:shadow-lg hover:brightness-110"
               >
                 {editingId ? "Save Changes" : "Add Medication"}
               </button>
@@ -235,11 +235,13 @@ export default function MedicationsPage() {
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-sage-400">Loading...</div>
+        <div className="text-center py-16 text-sage-400">Loading...</div>
       ) : activeMeds.length === 0 ? (
-        <div className="rounded-xl border border-sage-200 bg-white p-12 text-center">
-          <Pill className="mx-auto h-12 w-12 text-sage-300" strokeWidth={1} />
-          <h3 className="mt-4 text-lg font-medium text-sage-700">
+        <div className="rounded-2xl border border-sage-200/80 bg-white p-16 text-center shadow-sm">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-sage-50">
+            <Pill className="h-8 w-8 text-sage-300" strokeWidth={1.5} />
+          </div>
+          <h3 className="mt-4 text-lg font-bold text-sage-700">
             No medications added yet
           </h3>
           <p className="mt-1 text-sage-500">
@@ -253,15 +255,15 @@ export default function MedicationsPage() {
             return (
               <div
                 key={med.id}
-                className={`rounded-xl border bg-white p-4 transition-colors ${
+                className={`rounded-2xl border bg-white p-4 shadow-sm transition-all hover:shadow-md ${
                   takenToday
-                    ? "border-green-200 bg-green-50/30"
-                    : "border-sage-200"
+                    ? "border-green-200 bg-gradient-to-r from-green-50/50 to-emerald-50/30"
+                    : "border-sage-200/80"
                 }`}
               >
                 <div className="flex items-start gap-4">
                   <div
-                    className={`mt-0.5 flex h-10 w-10 items-center justify-center rounded-lg ${
+                    className={`mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl ${
                       takenToday
                         ? "bg-green-100 text-green-600"
                         : "bg-sage-100 text-sage-500"
@@ -275,10 +277,10 @@ export default function MedicationsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-sage-800">
+                      <h3 className="font-bold text-sage-800">
                         {med.name}
                       </h3>
-                      <span className="rounded-full bg-sage-100 px-2 py-0.5 text-xs text-sage-500">
+                      <span className="rounded-full bg-sage-100 px-2 py-0.5 text-xs font-medium text-sage-500">
                         {med.dosage}
                       </span>
                     </div>
@@ -295,20 +297,20 @@ export default function MedicationsPage() {
                       <>
                         <button
                           onClick={() => handleLogDose(med.id, false)}
-                          className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700"
+                          className="rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-all hover:shadow-md hover:brightness-110"
                         >
                           Taken
                         </button>
                         <button
                           onClick={() => handleLogDose(med.id, true)}
-                          className="rounded-lg bg-sage-100 px-3 py-1.5 text-xs font-medium text-sage-600 transition-colors hover:bg-sage-200"
+                          className="rounded-xl bg-sage-100 px-3 py-1.5 text-xs font-semibold text-sage-600 transition-colors hover:bg-sage-200"
                         >
                           Skip
                         </button>
                       </>
                     )}
                     {takenToday && (
-                      <span className="text-xs font-medium text-green-600">
+                      <span className="text-xs font-semibold text-green-600">
                         Taken at{" "}
                         {new Date(med.logs[0].takenAt).toLocaleTimeString(
                           "en-US",
@@ -318,7 +320,7 @@ export default function MedicationsPage() {
                     )}
                     <button
                       onClick={() => openForm(med)}
-                      className="rounded-lg p-1.5 text-sage-400 hover:bg-sage-100 hover:text-sage-600"
+                      className="rounded-xl p-1.5 text-sage-400 hover:bg-sage-50 hover:text-sage-600 transition-colors"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -326,13 +328,13 @@ export default function MedicationsPage() {
                       <div className="flex items-center gap-1 text-xs">
                         <button
                           onClick={() => handleDelete(med.id)}
-                          className="rounded-lg bg-red-100 px-2 py-1 font-medium text-red-600 hover:bg-red-200"
+                          className="rounded-lg bg-red-100 px-2.5 py-1 font-medium text-red-600 hover:bg-red-200 transition-colors"
                         >
                           Yes
                         </button>
                         <button
                           onClick={() => setConfirmingDeleteId(null)}
-                          className="rounded-lg bg-sage-100 px-2 py-1 font-medium text-sage-600 hover:bg-sage-200"
+                          className="rounded-lg bg-sage-100 px-2.5 py-1 font-medium text-sage-600 hover:bg-sage-200 transition-colors"
                         >
                           No
                         </button>
@@ -340,7 +342,7 @@ export default function MedicationsPage() {
                     ) : (
                       <button
                         onClick={() => setConfirmingDeleteId(med.id)}
-                        className="rounded-lg p-1.5 text-sage-400 hover:bg-red-50 hover:text-red-500"
+                        className="rounded-xl p-1.5 text-sage-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

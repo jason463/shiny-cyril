@@ -9,6 +9,7 @@ import {
   CalendarDays,
   BarChart3,
   ArrowRight,
+  Sparkles,
 } from "lucide-react";
 
 export default async function DashboardPage() {
@@ -59,38 +60,54 @@ export default async function DashboardPage() {
       label: "Log Symptom",
       href: "/symptoms",
       icon: Activity,
-      color: "bg-red-50 text-red-600",
+      iconColor: "text-red-500",
+      bg: "bg-red-50",
+      hoverBorder: "hover:border-red-200",
     },
     {
       label: "Take Medication",
       href: "/medications",
       icon: Pill,
-      color: "bg-blue-50 text-blue-600",
+      iconColor: "text-blue-500",
+      bg: "bg-blue-50",
+      hoverBorder: "hover:border-blue-200",
     },
     {
       label: "Start Timer",
       href: "/timer",
       icon: Timer,
-      color: "bg-amber-50 text-amber-600",
+      iconColor: "text-amber-500",
+      bg: "bg-amber-50",
+      hoverBorder: "hover:border-amber-200",
     },
     {
       label: "Log Meal",
       href: "/journal",
       icon: UtensilsCrossed,
-      color: "bg-green-50 text-green-600",
+      iconColor: "text-green-500",
+      bg: "bg-green-50",
+      hoverBorder: "hover:border-green-200",
     },
   ];
 
   return (
     <div className="space-y-8">
       {/* Greeting */}
-      <div>
-        <h1 className="text-2xl font-bold text-sage-900">
-          {greeting}, {firstName}
-        </h1>
-        <p className="mt-1 text-sage-500">
-          Here&apos;s your gut health overview for today.
-        </p>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-green-600 via-emerald-600 to-green-700 p-6 sm:p-8 text-white shadow-lg shadow-green-600/15">
+        <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-emerald-400/20 blur-2xl" />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles className="h-4 w-4 text-green-200" />
+            <span className="text-sm font-medium text-green-200">Today&apos;s Overview</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold">
+            {greeting}, {firstName}
+          </h1>
+          <p className="mt-1 text-green-100">
+            Here&apos;s your gut health snapshot for today.
+          </p>
+        </div>
       </div>
 
       {/* Quick Actions */}
@@ -99,12 +116,12 @@ export default async function DashboardPage() {
           <Link
             key={action.href}
             href={action.href}
-            className="flex flex-col items-center gap-2 rounded-xl border border-sage-200 bg-white p-4 transition-all hover:border-green-200 hover:shadow-sm"
+            className={`group flex flex-col items-center gap-3 rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 ${action.hoverBorder}`}
           >
-            <div className={`rounded-lg p-2.5 ${action.color}`}>
-              <action.icon className="h-5 w-5" strokeWidth={1.5} />
+            <div className={`rounded-xl p-3 ${action.bg} transition-transform duration-300 group-hover:scale-110`}>
+              <action.icon className={`h-5 w-5 ${action.iconColor}`} strokeWidth={1.5} />
             </div>
-            <span className="text-sm font-medium text-sage-700">
+            <span className="text-sm font-semibold text-sage-700">
               {action.label}
             </span>
           </Link>
@@ -113,102 +130,114 @@ export default async function DashboardPage() {
 
       {/* Today's Overview Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-xl border border-sage-200 bg-white p-5">
+        <div className="group rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-sage-500">Symptoms Today</h3>
-            <Activity className="h-4 w-4 text-sage-400" />
+            <h3 className="text-sm font-semibold text-sage-500">Symptoms Today</h3>
+            <div className="rounded-lg bg-red-50 p-1.5">
+              <Activity className="h-4 w-4 text-red-400" />
+            </div>
           </div>
-          <p className="mt-2 text-3xl font-bold text-sage-900">
+          <p className="mt-3 text-3xl font-bold text-sage-900">
             {todaySymptoms}
           </p>
           <Link
             href="/symptoms"
-            className="mt-3 inline-flex items-center gap-1 text-sm text-green-600 hover:text-green-700"
+            className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-green-600 hover:text-green-700 transition-colors"
           >
-            Log symptoms <ArrowRight className="h-3 w-3" />
+            Log symptoms <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
 
-        <div className="rounded-xl border border-sage-200 bg-white p-5">
+        <div className="group rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-sage-500">Medications</h3>
-            <Pill className="h-4 w-4 text-sage-400" />
+            <h3 className="text-sm font-semibold text-sage-500">Medications</h3>
+            <div className="rounded-lg bg-blue-50 p-1.5">
+              <Pill className="h-4 w-4 text-blue-400" />
+            </div>
           </div>
-          <p className="mt-2 text-3xl font-bold text-sage-900">
+          <p className="mt-3 text-3xl font-bold text-sage-900">
             {medsTaken}
-            <span className="text-lg font-normal text-sage-400">
+            <span className="text-lg font-normal text-sage-300">
               /{totalMeds}
             </span>
           </p>
-          <p className="text-sm text-sage-500">taken today</p>
+          <p className="text-sm text-sage-400">taken today</p>
           <Link
             href="/medications"
-            className="mt-2 inline-flex items-center gap-1 text-sm text-green-600 hover:text-green-700"
+            className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-green-600 hover:text-green-700 transition-colors"
           >
-            View all <ArrowRight className="h-3 w-3" />
+            View all <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
 
-        <div className="rounded-xl border border-sage-200 bg-white p-5">
+        <div className="group rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-sage-500">Meals Logged</h3>
-            <UtensilsCrossed className="h-4 w-4 text-sage-400" />
+            <h3 className="text-sm font-semibold text-sage-500">Meals Logged</h3>
+            <div className="rounded-lg bg-amber-50 p-1.5">
+              <UtensilsCrossed className="h-4 w-4 text-amber-400" />
+            </div>
           </div>
-          <p className="mt-2 text-3xl font-bold text-sage-900">{todayMeals}</p>
+          <p className="mt-3 text-3xl font-bold text-sage-900">{todayMeals}</p>
           <Link
             href="/timer"
-            className="mt-3 inline-flex items-center gap-1 text-sm text-green-600 hover:text-green-700"
+            className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-green-600 hover:text-green-700 transition-colors"
           >
-            Meal timer <ArrowRight className="h-3 w-3" />
+            Meal timer <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
 
-        <div className="rounded-xl border border-sage-200 bg-white p-5">
+        <div className="group rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-sage-500">Active Protocols</h3>
-            <CalendarDays className="h-4 w-4 text-sage-400" />
+            <h3 className="text-sm font-semibold text-sage-500">Active Protocols</h3>
+            <div className="rounded-lg bg-purple-50 p-1.5">
+              <CalendarDays className="h-4 w-4 text-purple-400" />
+            </div>
           </div>
-          <p className="mt-2 text-3xl font-bold text-sage-900">
+          <p className="mt-3 text-3xl font-bold text-sage-900">
             {activeProtocols}
           </p>
           <Link
             href="/protocols"
-            className="mt-3 inline-flex items-center gap-1 text-sm text-green-600 hover:text-green-700"
+            className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-green-600 hover:text-green-700 transition-colors"
           >
-            View protocols <ArrowRight className="h-3 w-3" />
+            View protocols <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
 
-        <div className="rounded-xl border border-sage-200 bg-white p-5">
+        <div className="group rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-sage-500">Journal Entries</h3>
-            <UtensilsCrossed className="h-4 w-4 text-sage-400" />
+            <h3 className="text-sm font-semibold text-sage-500">Journal Entries</h3>
+            <div className="rounded-lg bg-green-50 p-1.5">
+              <UtensilsCrossed className="h-4 w-4 text-green-400" />
+            </div>
           </div>
-          <p className="mt-2 text-3xl font-bold text-sage-900">
+          <p className="mt-3 text-3xl font-bold text-sage-900">
             {todayJournal}
           </p>
-          <p className="text-sm text-sage-500">logged today</p>
+          <p className="text-sm text-sage-400">logged today</p>
           <Link
             href="/journal"
-            className="mt-2 inline-flex items-center gap-1 text-sm text-green-600 hover:text-green-700"
+            className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-green-600 hover:text-green-700 transition-colors"
           >
-            Log food <ArrowRight className="h-3 w-3" />
+            Log food <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
 
-        <div className="rounded-xl border border-sage-200 bg-white p-5">
+        <div className="group rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-sage-500">Progress</h3>
-            <BarChart3 className="h-4 w-4 text-sage-400" />
+            <h3 className="text-sm font-semibold text-sage-500">Progress</h3>
+            <div className="rounded-lg bg-teal-50 p-1.5">
+              <BarChart3 className="h-4 w-4 text-teal-400" />
+            </div>
           </div>
-          <p className="mt-2 text-lg font-medium text-sage-700">
+          <p className="mt-3 text-lg font-semibold text-sage-700">
             View your trends
           </p>
           <Link
             href="/progress"
-            className="mt-3 inline-flex items-center gap-1 text-sm text-green-600 hover:text-green-700"
+            className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-green-600 hover:text-green-700 transition-colors"
           >
-            See charts <ArrowRight className="h-3 w-3" />
+            See charts <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
       </div>

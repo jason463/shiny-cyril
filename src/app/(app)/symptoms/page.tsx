@@ -133,7 +133,7 @@ export default function SymptomsPage() {
         </div>
         <button
           onClick={() => openForm()}
-          className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700"
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-green-600/20 transition-all hover:shadow-lg hover:brightness-110"
         >
           <Plus className="h-4 w-4" />
           Log Symptom
@@ -141,15 +141,15 @@ export default function SymptomsPage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-sage-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-slide-up">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-sage-900">
                 {editingId ? "Edit Symptom" : "Log Symptom"}
               </h2>
               <button
                 onClick={() => { setShowForm(false); setEditingId(null); }}
-                className="rounded-lg p-1 text-sage-400 hover:bg-sage-100"
+                className="rounded-xl p-1.5 text-sage-400 hover:bg-sage-50 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -157,7 +157,7 @@ export default function SymptomsPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-sage-700 mb-1">
+                <label className="block text-sm font-semibold text-sage-700 mb-1.5">
                   Symptom
                 </label>
                 <input
@@ -166,17 +166,17 @@ export default function SymptomsPage() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Bloating"
                   required
-                  className="w-full rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 placeholder-sage-400 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                  className="w-full rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
                 />
-                <div className="mt-2 flex flex-wrap gap-1.5">
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
                   {commonSymptoms.map((s) => (
                     <button
                       key={s}
                       type="button"
                       onClick={() => setName(s)}
-                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
                         name === s
-                          ? "bg-green-100 text-green-700"
+                          ? "bg-green-100 text-green-700 shadow-sm"
                           : "bg-sage-100 text-sage-600 hover:bg-sage-200"
                       }`}
                     >
@@ -187,9 +187,9 @@ export default function SymptomsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-sage-700 mb-1">
+                <label className="block text-sm font-semibold text-sage-700 mb-1.5">
                   Severity: {severity}/10{" "}
-                  <span className="text-sage-400">
+                  <span className="font-normal text-sage-400">
                     ({severityLabel(severity)})
                   </span>
                 </label>
@@ -199,16 +199,16 @@ export default function SymptomsPage() {
                   max="10"
                   value={severity}
                   onChange={(e) => setSeverity(parseInt(e.target.value))}
-                  className="w-full accent-green-600"
+                  className="w-full"
                 />
-                <div className="flex justify-between text-xs text-sage-400">
+                <div className="flex justify-between text-xs text-sage-400 mt-1">
                   <span>Mild</span>
                   <span>Severe</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-sage-700 mb-1">
+                <label className="block text-sm font-semibold text-sage-700 mb-1.5">
                   Notes (optional)
                 </label>
                 <textarea
@@ -216,13 +216,13 @@ export default function SymptomsPage() {
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Any additional details..."
                   rows={2}
-                  className="w-full rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 placeholder-sage-400 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                  className="w-full rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full rounded-lg bg-green-600 py-2.5 font-medium text-white transition-colors hover:bg-green-700"
+                className="w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 py-3 font-semibold text-white shadow-md shadow-green-600/20 transition-all hover:shadow-lg hover:brightness-110"
               >
                 {editingId ? "Save Changes" : "Log Symptom"}
               </button>
@@ -232,11 +232,13 @@ export default function SymptomsPage() {
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-sage-400">Loading...</div>
+        <div className="text-center py-16 text-sage-400">Loading...</div>
       ) : symptoms.length === 0 ? (
-        <div className="rounded-xl border border-sage-200 bg-white p-12 text-center">
-          <Activity className="mx-auto h-12 w-12 text-sage-300" strokeWidth={1} />
-          <h3 className="mt-4 text-lg font-medium text-sage-700">
+        <div className="rounded-2xl border border-sage-200/80 bg-white p-16 text-center shadow-sm">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-sage-50">
+            <Activity className="h-8 w-8 text-sage-300" strokeWidth={1.5} />
+          </div>
+          <h3 className="mt-4 text-lg font-bold text-sage-700">
             No symptoms logged yet
           </h3>
           <p className="mt-1 text-sage-500">
@@ -247,22 +249,22 @@ export default function SymptomsPage() {
         <div className="space-y-6">
           {Object.entries(grouped).map(([date, dateSymptoms]) => (
             <div key={date}>
-              <h3 className="text-sm font-medium text-sage-500 mb-3">{date}</h3>
+              <h3 className="text-sm font-semibold text-sage-400 mb-3">{date}</h3>
               <div className="space-y-2">
                 {dateSymptoms.map((symptom) => (
                   <div
                     key={symptom.id}
-                    className="flex items-center gap-4 rounded-xl border border-sage-200 bg-white p-4"
+                    className="flex items-center gap-4 rounded-2xl border border-sage-200/80 bg-white p-4 shadow-sm transition-all hover:shadow-md"
                   >
                     <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold ${severityColor(
+                      className={`flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold ${severityColor(
                         symptom.severity
                       )}`}
                     >
                       {symptom.severity}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sage-800">
+                      <p className="font-semibold text-sage-800">
                         {symptom.name}
                       </p>
                       {symptom.notes && (
@@ -280,7 +282,7 @@ export default function SymptomsPage() {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => openForm(symptom)}
-                        className="rounded-lg p-1.5 text-sage-400 hover:bg-sage-100 hover:text-sage-600"
+                        className="rounded-xl p-1.5 text-sage-400 hover:bg-sage-50 hover:text-sage-600 transition-colors"
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
@@ -288,13 +290,13 @@ export default function SymptomsPage() {
                         <div className="flex items-center gap-1 text-xs">
                           <button
                             onClick={() => handleDelete(symptom.id)}
-                            className="rounded-lg bg-red-100 px-2 py-1 font-medium text-red-600 hover:bg-red-200"
+                            className="rounded-lg bg-red-100 px-2.5 py-1 font-medium text-red-600 hover:bg-red-200 transition-colors"
                           >
                             Yes
                           </button>
                           <button
                             onClick={() => setConfirmingDeleteId(null)}
-                            className="rounded-lg bg-sage-100 px-2 py-1 font-medium text-sage-600 hover:bg-sage-200"
+                            className="rounded-lg bg-sage-100 px-2.5 py-1 font-medium text-sage-600 hover:bg-sage-200 transition-colors"
                           >
                             No
                           </button>
@@ -302,7 +304,7 @@ export default function SymptomsPage() {
                       ) : (
                         <button
                           onClick={() => setConfirmingDeleteId(symptom.id)}
-                          className="rounded-lg p-1.5 text-sage-400 hover:bg-red-50 hover:text-red-500"
+                          className="rounded-xl p-1.5 text-sage-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>

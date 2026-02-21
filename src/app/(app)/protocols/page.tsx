@@ -149,7 +149,7 @@ export default function ProtocolsPage() {
         </div>
         <button
           onClick={() => openForm()}
-          className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700"
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-green-600/20 transition-all hover:shadow-lg hover:brightness-110"
         >
           <Plus className="h-4 w-4" />
           New Protocol
@@ -157,15 +157,15 @@ export default function ProtocolsPage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/30 p-4 pt-20">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-sage-900">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/30 backdrop-blur-sm p-4 pt-20 animate-fade-in">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-slide-up">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-sage-900">
                 {editingId ? "Edit Protocol" : "New Protocol"}
               </h2>
               <button
                 onClick={() => { setShowForm(false); setEditingId(null); }}
-                className="rounded-lg p-1 text-sage-400 hover:bg-sage-100"
+                className="rounded-xl p-1.5 text-sage-400 hover:bg-sage-50 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -173,7 +173,7 @@ export default function ProtocolsPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-sage-700 mb-1">
+                <label className="block text-sm font-semibold text-sage-700 mb-1.5">
                   Protocol Name
                 </label>
                 <input
@@ -182,12 +182,12 @@ export default function ProtocolsPage() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder='e.g., "SIBO Treatment Round 2"'
                   required
-                  className="w-full rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 placeholder-sage-400 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                  className="w-full rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-sage-700 mb-1">
+                <label className="block text-sm font-semibold text-sage-700 mb-1.5">
                   Description (optional)
                 </label>
                 <input
@@ -195,20 +195,20 @@ export default function ProtocolsPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Brief overview of this protocol"
-                  className="w-full rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 placeholder-sage-400 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                  className="w-full rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
                 />
               </div>
 
               {!editingId && (
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-sage-700">
+                    <label className="text-sm font-semibold text-sage-700">
                       Phases
                     </label>
                     <button
                       type="button"
                       onClick={addPhase}
-                      className="text-sm text-green-600 hover:text-green-700 font-medium"
+                      className="text-sm text-green-600 hover:text-green-700 font-semibold transition-colors"
                     >
                       + Add phase
                     </button>
@@ -217,10 +217,10 @@ export default function ProtocolsPage() {
                     {phases.map((phase, index) => (
                       <div
                         key={index}
-                        className="rounded-lg border border-sage-200 bg-sage-50 p-3"
+                        className="rounded-xl border border-sage-200 bg-sage-50 p-3"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-xs font-bold text-green-700">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-500 text-xs font-bold text-white">
                             {index + 1}
                           </span>
                           <input
@@ -231,13 +231,13 @@ export default function ProtocolsPage() {
                             }
                             placeholder="Phase name"
                             required
-                            className="flex-1 rounded-lg border border-sage-200 bg-white px-3 py-1.5 text-sm text-sage-800 placeholder-sage-400 outline-none focus:border-green-400"
+                            className="flex-1 rounded-xl border border-sage-200 bg-white px-3 py-2 text-sm text-sage-800 placeholder-sage-400 outline-none focus:border-green-400"
                           />
                           {phases.length > 1 && (
                             <button
                               type="button"
                               onClick={() => removePhase(index)}
-                              className="text-sage-400 hover:text-red-500"
+                              className="text-sage-400 hover:text-red-500 transition-colors"
                             >
                               <X className="h-4 w-4" />
                             </button>
@@ -251,7 +251,7 @@ export default function ProtocolsPage() {
                               updatePhase(index, "description", e.target.value)
                             }
                             placeholder="Description (optional)"
-                            className="flex-1 rounded-lg border border-sage-200 bg-white px-3 py-1.5 text-sm text-sage-800 placeholder-sage-400 outline-none focus:border-green-400"
+                            className="flex-1 rounded-xl border border-sage-200 bg-white px-3 py-2 text-sm text-sage-800 placeholder-sage-400 outline-none focus:border-green-400"
                           />
                           <div className="flex items-center gap-1">
                             <input
@@ -265,7 +265,7 @@ export default function ProtocolsPage() {
                                 )
                               }
                               min="1"
-                              className="w-16 rounded-lg border border-sage-200 bg-white px-2 py-1.5 text-center text-sm text-sage-800 outline-none focus:border-green-400"
+                              className="w-16 rounded-xl border border-sage-200 bg-white px-2 py-2 text-center text-sm text-sage-800 outline-none focus:border-green-400"
                             />
                             <span className="text-xs text-sage-500">days</span>
                           </div>
@@ -278,7 +278,7 @@ export default function ProtocolsPage() {
 
               <button
                 type="submit"
-                className="w-full rounded-lg bg-green-600 py-2.5 font-medium text-white transition-colors hover:bg-green-700"
+                className="w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 py-3 font-semibold text-white shadow-md shadow-green-600/20 transition-all hover:shadow-lg hover:brightness-110"
               >
                 {editingId ? "Save Changes" : "Create Protocol"}
               </button>
@@ -288,14 +288,13 @@ export default function ProtocolsPage() {
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-sage-400">Loading...</div>
+        <div className="text-center py-16 text-sage-400">Loading...</div>
       ) : protocols.length === 0 ? (
-        <div className="rounded-xl border border-sage-200 bg-white p-12 text-center">
-          <CalendarDays
-            className="mx-auto h-12 w-12 text-sage-300"
-            strokeWidth={1}
-          />
-          <h3 className="mt-4 text-lg font-medium text-sage-700">
+        <div className="rounded-2xl border border-sage-200/80 bg-white p-16 text-center shadow-sm">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-sage-50">
+            <CalendarDays className="h-8 w-8 text-sage-300" strokeWidth={1.5} />
+          </div>
+          <h3 className="mt-4 text-lg font-bold text-sage-700">
             No protocols yet
           </h3>
           <p className="mt-1 text-sage-500">
@@ -311,7 +310,7 @@ export default function ProtocolsPage() {
             return (
               <div
                 key={protocol.id}
-                className="rounded-xl border border-sage-200 bg-white overflow-hidden"
+                className="rounded-2xl border border-sage-200/80 bg-white overflow-hidden shadow-sm transition-all hover:shadow-md"
               >
                 <div
                   className="flex items-center gap-4 p-5 cursor-pointer"
@@ -320,7 +319,7 @@ export default function ProtocolsPage() {
                   }
                 >
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sage-800">
+                    <h3 className="font-bold text-sage-800">
                       {protocol.name}
                     </h3>
                     {protocol.description && (
@@ -329,13 +328,13 @@ export default function ProtocolsPage() {
                       </p>
                     )}
                     <div className="mt-3 flex items-center gap-3">
-                      <div className="flex-1 h-2 rounded-full bg-sage-100">
+                      <div className="flex-1 h-2.5 rounded-full bg-sage-100">
                         <div
-                          className="h-2 rounded-full bg-green-500 transition-all"
+                          className="h-2.5 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all"
                           style={{ width: `${progress}%` }}
                         />
                       </div>
-                      <span className="text-sm font-medium text-sage-600">
+                      <span className="text-sm font-semibold text-sage-600">
                         {Math.round(progress)}%
                       </span>
                     </div>
@@ -346,7 +345,7 @@ export default function ProtocolsPage() {
                         e.stopPropagation();
                         openForm(protocol);
                       }}
-                      className="rounded-lg p-1.5 text-sage-400 hover:bg-sage-100 hover:text-sage-600"
+                      className="rounded-xl p-1.5 text-sage-400 hover:bg-sage-50 hover:text-sage-600 transition-colors"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -357,13 +356,13 @@ export default function ProtocolsPage() {
                       >
                         <button
                           onClick={() => handleDelete(protocol.id)}
-                          className="rounded-lg bg-red-100 px-2 py-1 font-medium text-red-600 hover:bg-red-200"
+                          className="rounded-lg bg-red-100 px-2.5 py-1 font-medium text-red-600 hover:bg-red-200 transition-colors"
                         >
                           Yes
                         </button>
                         <button
                           onClick={() => setConfirmingDeleteId(null)}
-                          className="rounded-lg bg-sage-100 px-2 py-1 font-medium text-sage-600 hover:bg-sage-200"
+                          className="rounded-lg bg-sage-100 px-2.5 py-1 font-medium text-sage-600 hover:bg-sage-200 transition-colors"
                         >
                           No
                         </button>
@@ -374,7 +373,7 @@ export default function ProtocolsPage() {
                           e.stopPropagation();
                           setConfirmingDeleteId(protocol.id);
                         }}
-                        className="rounded-lg p-1.5 text-sage-400 hover:bg-red-50 hover:text-red-500"
+                        className="rounded-xl p-1.5 text-sage-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -388,14 +387,14 @@ export default function ProtocolsPage() {
                 </div>
 
                 {isExpanded && (
-                  <div className="border-t border-sage-200 p-5">
+                  <div className="border-t border-sage-100 p-5">
                     <div className="space-y-3">
                       {protocol.phases.map((phase, index) => (
                         <div
                           key={phase.id}
-                          className={`flex items-start gap-3 rounded-lg p-3 ${
+                          className={`flex items-start gap-3 rounded-xl p-3.5 transition-colors ${
                             phase.completed
-                              ? "bg-green-50"
+                              ? "bg-gradient-to-r from-green-50 to-emerald-50"
                               : "bg-sage-50"
                           }`}
                         >
@@ -403,7 +402,7 @@ export default function ProtocolsPage() {
                             onClick={() =>
                               togglePhase(phase.id, !phase.completed)
                             }
-                            className={`mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors ${
+                            className={`mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-all ${
                               phase.completed
                                 ? "border-green-500 bg-green-500 text-white"
                                 : "border-sage-300 hover:border-green-400"
@@ -415,15 +414,15 @@ export default function ProtocolsPage() {
                           </button>
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-medium text-sage-400">
+                              <span className="text-xs font-semibold text-sage-400">
                                 Phase {index + 1}
                               </span>
-                              <span className="rounded-full bg-sage-200 px-2 py-0.5 text-xs text-sage-600">
+                              <span className="rounded-full bg-sage-200 px-2 py-0.5 text-xs font-medium text-sage-600">
                                 {phase.durationDays} days
                               </span>
                             </div>
                             <p
-                              className={`font-medium ${
+                              className={`font-semibold ${
                                 phase.completed
                                   ? "text-green-700 line-through"
                                   : "text-sage-800"

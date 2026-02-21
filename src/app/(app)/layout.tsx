@@ -14,7 +14,7 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="min-h-screen bg-sage-50">
+    <div className="min-h-screen bg-gradient-to-br from-sage-50 via-white to-sage-50">
       <Sidebar userName={user.name || user.email} />
       <main className="pt-14 lg:pt-0 lg:pl-60">
         <div className="mx-auto max-w-5xl p-4 sm:p-6 lg:p-8">{children}</div>

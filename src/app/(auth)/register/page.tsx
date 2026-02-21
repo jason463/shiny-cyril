@@ -40,30 +40,33 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-sage-50 px-4">
-      <div className="w-full max-w-md">
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-sage-50 via-white to-green-50 px-4">
+      <div className="pointer-events-none absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-green-100/40 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-40 -left-40 h-[400px] w-[400px] rounded-full bg-sage-100/50 blur-3xl" />
+
+      <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-600 text-base font-bold text-white">
+          <Link href="/" className="inline-flex items-center gap-2.5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 text-base font-bold text-white shadow-lg shadow-green-600/20">
               MG
             </div>
             <span className="text-xl font-bold text-sage-800">MyGutPal</span>
           </Link>
         </div>
 
-        <div className="rounded-xl border border-sage-200 bg-white p-8 shadow-sm">
+        <div className="rounded-2xl border border-sage-200/60 bg-white/80 p-8 shadow-xl shadow-sage-200/30 backdrop-blur-sm">
           <h1 className="text-2xl font-bold text-sage-900 mb-1">Create your account</h1>
           <p className="text-sage-500 mb-6">Start tracking your gut health journey</p>
 
           {error && (
-            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+            <div className="mb-4 rounded-xl bg-red-50 border border-red-200/60 px-4 py-3 text-sm text-red-600 animate-slide-up">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-sage-700 mb-1">
+              <label htmlFor="name" className="block text-sm font-semibold text-sage-700 mb-1.5">
                 Name (optional)
               </label>
               <input
@@ -71,13 +74,13 @@ export default function RegisterPage() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 placeholder-sage-400 outline-none transition-colors focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                className="w-full rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
                 placeholder="Your name"
               />
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-sage-700 mb-1">
+              <label htmlFor="email" className="block text-sm font-semibold text-sage-700 mb-1.5">
                 Email
               </label>
               <input
@@ -86,13 +89,13 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 placeholder-sage-400 outline-none transition-colors focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                className="w-full rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
                 placeholder="you@example.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-sage-700 mb-1">
+              <label htmlFor="password" className="block text-sm font-semibold text-sage-700 mb-1.5">
                 Password
               </label>
               <input
@@ -102,7 +105,7 @@ export default function RegisterPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
-                className="w-full rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 placeholder-sage-400 outline-none transition-colors focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                className="w-full rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
                 placeholder="At least 8 characters"
               />
             </div>
@@ -110,7 +113,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-green-600 py-2.5 font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-60"
+              className="w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 py-3 font-semibold text-white shadow-md shadow-green-600/20 transition-all hover:shadow-lg hover:brightness-110 disabled:opacity-60 disabled:hover:shadow-md"
             >
               {loading ? "Creating account..." : "Create Account"}
             </button>
@@ -118,7 +121,7 @@ export default function RegisterPage() {
 
           <p className="mt-6 text-center text-sm text-sage-500">
             Already have an account?{" "}
-            <Link href="/login" className="font-medium text-green-600 hover:text-green-700">
+            <Link href="/login" className="font-semibold text-green-600 hover:text-green-700 transition-colors">
               Sign in
             </Link>
           </p>

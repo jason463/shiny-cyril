@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, Check } from "lucide-react";
+import { Check } from "lucide-react";
 
 export default function SettingsPage() {
   const [name, setName] = useState("");
@@ -85,10 +85,10 @@ export default function SettingsPage() {
 
       {message && (
         <div
-          className={`flex items-center gap-2 rounded-lg p-4 text-sm ${
+          className={`flex items-center gap-2 rounded-xl p-4 text-sm font-medium animate-slide-up ${
             message.type === "success"
-              ? "bg-green-50 text-green-700 border border-green-200"
-              : "bg-red-50 text-red-700 border border-red-200"
+              ? "bg-green-50 text-green-700 border border-green-200/60"
+              : "bg-red-50 text-red-700 border border-red-200/60"
           }`}
         >
           {message.type === "success" && <Check className="h-4 w-4" />}
@@ -97,13 +97,13 @@ export default function SettingsPage() {
       )}
 
       {/* Display Name */}
-      <div className="rounded-xl border border-sage-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-sage-800 mb-4">
+      <div className="rounded-2xl border border-sage-200/80 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-sage-800 mb-4">
           Display Name
         </h2>
         <form onSubmit={handleSaveName} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-sage-700 mb-1">
+            <label className="block text-sm font-semibold text-sage-700 mb-1.5">
               Name
             </label>
             <input
@@ -111,13 +111,13 @@ export default function SettingsPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your name"
-              className="w-full max-w-sm rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 placeholder-sage-400 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+              className="w-full max-w-sm rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
             />
           </div>
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+            className="rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-green-600/20 transition-all hover:shadow-lg hover:brightness-110 disabled:opacity-50"
           >
             {saving ? "Saving..." : "Save Name"}
           </button>
@@ -125,13 +125,13 @@ export default function SettingsPage() {
       </div>
 
       {/* Change Password */}
-      <div className="rounded-xl border border-sage-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-sage-800 mb-4">
+      <div className="rounded-2xl border border-sage-200/80 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-sage-800 mb-4">
           Change Password
         </h2>
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-sage-700 mb-1">
+            <label className="block text-sm font-semibold text-sage-700 mb-1.5">
               Current Password
             </label>
             <input
@@ -139,11 +139,11 @@ export default function SettingsPage() {
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               required
-              className="w-full max-w-sm rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+              className="w-full max-w-sm rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-sage-700 mb-1">
+            <label className="block text-sm font-semibold text-sage-700 mb-1.5">
               New Password
             </label>
             <input
@@ -153,11 +153,11 @@ export default function SettingsPage() {
               placeholder="At least 8 characters"
               required
               minLength={8}
-              className="w-full max-w-sm rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 placeholder-sage-400 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+              className="w-full max-w-sm rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-sage-700 mb-1">
+            <label className="block text-sm font-semibold text-sage-700 mb-1.5">
               Confirm New Password
             </label>
             <input
@@ -166,13 +166,13 @@ export default function SettingsPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={8}
-              className="w-full max-w-sm rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+              className="w-full max-w-sm rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
             />
           </div>
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+            className="rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-green-600/20 transition-all hover:shadow-lg hover:brightness-110 disabled:opacity-50"
           >
             {saving ? "Saving..." : "Change Password"}
           </button>

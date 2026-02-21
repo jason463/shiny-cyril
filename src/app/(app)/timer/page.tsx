@@ -27,7 +27,6 @@ export default function MealTimerPage() {
     const data = await res.json();
     if (data.meals) {
       setRecentMeals(data.meals);
-      // Auto-start timer from last meal
       if (data.meals.length > 0) {
         const lastTime = new Date(data.meals[0].mealTime);
         const elapsedSec = Math.floor(
@@ -87,7 +86,6 @@ export default function MealTimerPage() {
       .padStart(2, "0")}`;
   }
 
-  // SVG circle params
   const size = 280;
   const strokeWidth = 12;
   const radius = (size - strokeWidth) / 2;
@@ -103,13 +101,13 @@ export default function MealTimerPage() {
         </p>
         <button
           onClick={() => setShowMmcInfo(!showMmcInfo)}
-          className="mt-2 inline-flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 transition-colors"
+          className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-green-600 hover:text-green-700 transition-colors"
         >
           <HelpCircle className="h-3.5 w-3.5" />
           What is MMC?
         </button>
         {showMmcInfo && (
-          <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm leading-relaxed text-sage-700">
+          <div className="mt-3 rounded-2xl border border-green-100 bg-gradient-to-r from-green-50 to-emerald-50 p-4 text-sm leading-relaxed text-sage-700 animate-slide-up">
             The migrating motor complex (MMC) is a wave-like cleaning motion
             your gut performs between meals. It typically needs 3–5 hours of
             fasting to complete a full cycle. Spacing your meals gives your gut
@@ -120,18 +118,18 @@ export default function MealTimerPage() {
       </div>
 
       {/* Interval Selector */}
-      <div className="rounded-xl border border-sage-200 bg-white p-4">
-        <label className="text-sm font-medium text-sage-700">
+      <div className="rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm">
+        <label className="text-sm font-semibold text-sage-700">
           Meal spacing interval
         </label>
-        <div className="mt-2 flex gap-2">
+        <div className="mt-3 flex gap-2">
           {[3, 3.5, 4, 4.5, 5].map((h) => (
             <button
               key={h}
               onClick={() => setIntervalHours(h)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
                 interval === h
-                  ? "bg-green-600 text-white"
+                  ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md shadow-green-600/20"
                   : "bg-sage-100 text-sage-600 hover:bg-sage-200"
               }`}
             >
@@ -142,12 +140,10 @@ export default function MealTimerPage() {
       </div>
 
       {/* Timer Display */}
-      <div className="rounded-xl border border-sage-200 bg-white p-8">
+      <div className="rounded-2xl border border-sage-200/80 bg-white p-8 shadow-sm">
         <div className="flex flex-col items-center">
-          {/* Circular Timer */}
           <div className="relative">
             <svg width={size} height={size} className="-rotate-90">
-              {/* Background circle */}
               <circle
                 cx={size / 2}
                 cy={size / 2}
@@ -156,13 +152,12 @@ export default function MealTimerPage() {
                 stroke="#e8ebe5"
                 strokeWidth={strokeWidth}
               />
-              {/* Progress circle */}
               <circle
                 cx={size / 2}
                 cy={size / 2}
                 r={radius}
                 fill="none"
-                stroke={mmcReady ? "#22c55e" : "#4ade80"}
+                stroke={mmcReady ? "#16a34a" : "#4ade80"}
                 strokeWidth={strokeWidth}
                 strokeLinecap="round"
                 strokeDasharray={circumference}
@@ -170,12 +165,11 @@ export default function MealTimerPage() {
                 className="transition-all duration-1000 ease-linear"
               />
             </svg>
-            {/* Center content */}
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               {running ? (
                 <>
                   <span
-                    className={`text-4xl font-bold ${
+                    className={`text-4xl font-bold tracking-tight ${
                       mmcReady ? "text-green-600" : "text-sage-800"
                     }`}
                   >
@@ -185,15 +179,17 @@ export default function MealTimerPage() {
                     {mmcReady ? "elapsed" : "remaining"}
                   </span>
                   {mmcReady && (
-                    <div className="mt-2 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
+                    <div className="mt-2 rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700">
                       MMC Complete
                     </div>
                   )}
                 </>
               ) : (
                 <>
-                  <Timer className="h-10 w-10 text-sage-300" strokeWidth={1} />
-                  <span className="mt-2 text-sm text-sage-500">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sage-50">
+                    <Timer className="h-8 w-8 text-sage-300" strokeWidth={1.5} />
+                  </div>
+                  <span className="mt-3 text-sm text-sage-500">
                     Log a meal to start
                   </span>
                 </>
@@ -201,7 +197,6 @@ export default function MealTimerPage() {
             </div>
           </div>
 
-          {/* Status Message */}
           <div className="mt-6 text-center">
             {running && !mmcReady && (
               <p className="text-sage-600">
@@ -209,14 +204,13 @@ export default function MealTimerPage() {
               </p>
             )}
             {running && mmcReady && (
-              <p className="text-green-600 font-medium">
+              <p className="text-green-600 font-semibold">
                 Your MMC has completed a full cleaning cycle. You&apos;re clear
                 to eat when ready.
               </p>
             )}
           </div>
 
-          {/* Actions */}
           <div className="mt-6 flex flex-col sm:flex-row items-center gap-3">
             <div className="flex items-center gap-2">
               <input
@@ -224,11 +218,11 @@ export default function MealTimerPage() {
                 value={mealNote}
                 onChange={(e) => setMealNote(e.target.value)}
                 placeholder="Meal note (optional)"
-                className="rounded-lg border border-sage-200 px-3 py-2 text-sm text-sage-800 placeholder-sage-400 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                className="rounded-xl border border-sage-200 bg-white px-3 py-2.5 text-sm text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
               />
               <button
                 onClick={logMeal}
-                className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700"
+                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-green-600/20 transition-all hover:shadow-lg hover:brightness-110"
               >
                 <Play className="h-4 w-4" />
                 Log Meal
@@ -237,7 +231,7 @@ export default function MealTimerPage() {
             {running && (
               <button
                 onClick={stopTimer}
-                className="flex items-center gap-2 rounded-lg bg-sage-100 px-4 py-2 text-sm font-medium text-sage-600 transition-colors hover:bg-sage-200"
+                className="flex items-center gap-2 rounded-xl bg-sage-100 px-4 py-2.5 text-sm font-semibold text-sage-600 transition-colors hover:bg-sage-200"
               >
                 <Square className="h-4 w-4" />
                 Reset
@@ -259,13 +253,13 @@ export default function MealTimerPage() {
 
       {/* Recent Meals */}
       {recentMeals.length > 0 && (
-        <div className="rounded-xl border border-sage-200 bg-white p-5">
-          <h3 className="font-semibold text-sage-800 mb-3">Recent Meals</h3>
+        <div className="rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm">
+          <h3 className="font-bold text-sage-800 mb-3">Recent Meals</h3>
           <div className="space-y-2">
             {recentMeals.slice(0, 10).map((meal) => (
               <div
                 key={meal.id}
-                className="flex items-center gap-3 rounded-lg bg-sage-50 p-3"
+                className="flex items-center gap-3 rounded-xl bg-sage-50 p-3"
               >
                 <UtensilsCrossed className="h-4 w-4 text-sage-400" />
                 <div className="flex-1">

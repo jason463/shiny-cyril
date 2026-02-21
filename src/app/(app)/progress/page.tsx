@@ -65,10 +65,8 @@ export default function ProgressPage() {
     fetchData();
   }, [fetchData]);
 
-  // Process symptom data for trend chart - average severity per day
   const symptomTrend = (() => {
     const byDate: Record<string, { total: number; count: number }> = {};
-
     symptoms.forEach((s) => {
       const date = new Date(s.timestamp).toLocaleDateString("en-US", {
         month: "short",
@@ -78,7 +76,6 @@ export default function ProgressPage() {
       byDate[date].total += s.severity;
       byDate[date].count++;
     });
-
     return Object.entries(byDate)
       .map(([date, { total, count }]) => ({
         date,
@@ -88,7 +85,6 @@ export default function ProgressPage() {
       .reverse();
   })();
 
-  // Process symptom frequency
   const symptomFrequency = (() => {
     const counts: Record<string, number> = {};
     symptoms.forEach((s) => {
@@ -100,7 +96,6 @@ export default function ProgressPage() {
       .slice(0, 8);
   })();
 
-  // Trigger frequency from journal
   const triggerFrequency = (() => {
     const counts: Record<string, number> = {};
     journal.forEach((entry) => {
@@ -117,7 +112,6 @@ export default function ProgressPage() {
       .slice(0, 8);
   })();
 
-  // Meal feeling distribution
   const feelingDistribution = (() => {
     const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     journal.forEach((entry) => {
@@ -138,7 +132,6 @@ export default function ProgressPage() {
 
   const COLORS = ["#ef4444", "#f97316", "#eab308", "#84cc16", "#22c55e"];
 
-  // Meal timing consistency
   const mealTimingData = (() => {
     const gaps: number[] = [];
     const sorted = [...meals].sort(
@@ -152,7 +145,6 @@ export default function ProgressPage() {
         (1000 * 60 * 60);
       if (gap > 0 && gap < 24) gaps.push(Math.round(gap * 10) / 10);
     }
-    // Bucket into ranges
     const buckets: Record<string, number> = {
       "< 3h": 0,
       "3-4h": 0,
@@ -185,14 +177,14 @@ export default function ProgressPage() {
             Visualize your gut health trends over time
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1.5">
           {[7, 14, 30, 90].map((d) => (
             <button
               key={d}
               onClick={() => setDays(d)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition-all ${
                 days === d
-                  ? "bg-green-600 text-white"
+                  ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md shadow-green-600/20"
                   : "bg-sage-100 text-sage-600 hover:bg-sage-200"
               }`}
             >
@@ -203,14 +195,13 @@ export default function ProgressPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-sage-400">Loading...</div>
+        <div className="text-center py-16 text-sage-400">Loading...</div>
       ) : !hasData ? (
-        <div className="rounded-xl border border-sage-200 bg-white p-12 text-center">
-          <BarChart3
-            className="mx-auto h-12 w-12 text-sage-300"
-            strokeWidth={1}
-          />
-          <h3 className="mt-4 text-lg font-medium text-sage-700">
+        <div className="rounded-2xl border border-sage-200/80 bg-white p-16 text-center shadow-sm">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-sage-50">
+            <BarChart3 className="h-8 w-8 text-sage-300" strokeWidth={1.5} />
+          </div>
+          <h3 className="mt-4 text-lg font-bold text-sage-700">
             No data to display yet
           </h3>
           <p className="mt-1 text-sage-500">
@@ -219,11 +210,10 @@ export default function ProgressPage() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Symptom Severity Trend */}
+        <div className="grid gap-5 lg:grid-cols-2">
           {symptomTrend.length > 0 && (
-            <div className="rounded-xl border border-sage-200 bg-white p-5 lg:col-span-2">
-              <h3 className="font-semibold text-sage-800 mb-4">
+            <div className="rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm lg:col-span-2">
+              <h3 className="font-bold text-sage-800 mb-4">
                 Symptom Severity Trend
               </h3>
               <ResponsiveContainer width="100%" height={250}>
@@ -241,17 +231,19 @@ export default function ProgressPage() {
                   />
                   <Tooltip
                     contentStyle={{
-                      borderRadius: "8px",
-                      border: "1px solid #d4d9cf",
+                      borderRadius: "12px",
+                      border: "1px solid #e8ebe5",
                       fontSize: "13px",
+                      boxShadow: "0 4px 6px -1px rgba(0,0,0,0.07)",
                     }}
                   />
                   <Line
                     type="monotone"
                     dataKey="avgSeverity"
-                    stroke="#22c55e"
-                    strokeWidth={2}
-                    dot={{ fill: "#22c55e", r: 4 }}
+                    stroke="#16a34a"
+                    strokeWidth={2.5}
+                    dot={{ fill: "#16a34a", r: 4, strokeWidth: 0 }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
                     name="Avg Severity"
                   />
                 </LineChart>
@@ -259,10 +251,9 @@ export default function ProgressPage() {
             </div>
           )}
 
-          {/* Symptom Frequency */}
           {symptomFrequency.length > 0 && (
-            <div className="rounded-xl border border-sage-200 bg-white p-5">
-              <h3 className="font-semibold text-sage-800 mb-4">
+            <div className="rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm">
+              <h3 className="font-bold text-sage-800 mb-4">
                 Most Frequent Symptoms
               </h3>
               <ResponsiveContainer width="100%" height={250}>
@@ -278,15 +269,16 @@ export default function ProgressPage() {
                   />
                   <Tooltip
                     contentStyle={{
-                      borderRadius: "8px",
-                      border: "1px solid #d4d9cf",
+                      borderRadius: "12px",
+                      border: "1px solid #e8ebe5",
                       fontSize: "13px",
+                      boxShadow: "0 4px 6px -1px rgba(0,0,0,0.07)",
                     }}
                   />
                   <Bar
                     dataKey="count"
                     fill="#4ade80"
-                    radius={[0, 4, 4, 0]}
+                    radius={[0, 6, 6, 0]}
                     name="Count"
                   />
                 </BarChart>
@@ -294,10 +286,9 @@ export default function ProgressPage() {
             </div>
           )}
 
-          {/* Trigger Frequency */}
           {triggerFrequency.length > 0 && (
-            <div className="rounded-xl border border-sage-200 bg-white p-5">
-              <h3 className="font-semibold text-sage-800 mb-4">
+            <div className="rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm">
+              <h3 className="font-bold text-sage-800 mb-4">
                 Most Tagged Triggers
               </h3>
               <ResponsiveContainer width="100%" height={250}>
@@ -313,15 +304,16 @@ export default function ProgressPage() {
                   />
                   <Tooltip
                     contentStyle={{
-                      borderRadius: "8px",
-                      border: "1px solid #d4d9cf",
+                      borderRadius: "12px",
+                      border: "1px solid #e8ebe5",
                       fontSize: "13px",
+                      boxShadow: "0 4px 6px -1px rgba(0,0,0,0.07)",
                     }}
                   />
                   <Bar
                     dataKey="count"
                     fill="#f97316"
-                    radius={[0, 4, 4, 0]}
+                    radius={[0, 6, 6, 0]}
                     name="Times Tagged"
                   />
                 </BarChart>
@@ -329,10 +321,9 @@ export default function ProgressPage() {
             </div>
           )}
 
-          {/* Feeling After Meals */}
           {journal.some((e) => e.feelingAfter) && (
-            <div className="rounded-xl border border-sage-200 bg-white p-5">
-              <h3 className="font-semibold text-sage-800 mb-4">
+            <div className="rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm">
+              <h3 className="font-bold text-sage-800 mb-4">
                 Post-Meal Feeling Distribution
               </h3>
               <ResponsiveContainer width="100%" height={250}>
@@ -356,9 +347,10 @@ export default function ProgressPage() {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      borderRadius: "8px",
-                      border: "1px solid #d4d9cf",
+                      borderRadius: "12px",
+                      border: "1px solid #e8ebe5",
                       fontSize: "13px",
+                      boxShadow: "0 4px 6px -1px rgba(0,0,0,0.07)",
                     }}
                   />
                 </PieChart>
@@ -366,10 +358,9 @@ export default function ProgressPage() {
             </div>
           )}
 
-          {/* Meal Timing */}
           {mealTimingData.some((d) => d.count > 0) && (
-            <div className="rounded-xl border border-sage-200 bg-white p-5">
-              <h3 className="font-semibold text-sage-800 mb-4">
+            <div className="rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm">
+              <h3 className="font-bold text-sage-800 mb-4">
                 Meal Spacing Distribution
               </h3>
               <ResponsiveContainer width="100%" height={250}>
@@ -383,15 +374,16 @@ export default function ProgressPage() {
                   <YAxis fontSize={12} tick={{ fill: "#7a8770" }} />
                   <Tooltip
                     contentStyle={{
-                      borderRadius: "8px",
-                      border: "1px solid #d4d9cf",
+                      borderRadius: "12px",
+                      border: "1px solid #e8ebe5",
                       fontSize: "13px",
+                      boxShadow: "0 4px 6px -1px rgba(0,0,0,0.07)",
                     }}
                   />
                   <Bar
                     dataKey="count"
-                    fill="#22c55e"
-                    radius={[4, 4, 0, 0]}
+                    fill="#16a34a"
+                    radius={[6, 6, 0, 0]}
                     name="Meal Gaps"
                   />
                 </BarChart>
@@ -400,18 +392,18 @@ export default function ProgressPage() {
           )}
 
           {/* Summary Stats */}
-          <div className="rounded-xl border border-sage-200 bg-white p-5 lg:col-span-2">
-            <h3 className="font-semibold text-sage-800 mb-4">
+          <div className="rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm lg:col-span-2">
+            <h3 className="font-bold text-sage-800 mb-4">
               Summary ({days}-Day Window)
             </h3>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <div className="rounded-lg bg-sage-50 p-4 text-center">
+              <div className="rounded-xl bg-gradient-to-br from-sage-50 to-white p-4 text-center border border-sage-100">
                 <p className="text-2xl font-bold text-sage-800">
                   {symptoms.length}
                 </p>
-                <p className="text-sm text-sage-500">Symptoms Logged</p>
+                <p className="text-sm font-medium text-sage-500">Symptoms Logged</p>
               </div>
-              <div className="rounded-lg bg-sage-50 p-4 text-center">
+              <div className="rounded-xl bg-gradient-to-br from-sage-50 to-white p-4 text-center border border-sage-100">
                 <p className="text-2xl font-bold text-sage-800">
                   {symptoms.length > 0
                     ? (
@@ -420,19 +412,19 @@ export default function ProgressPage() {
                       ).toFixed(1)
                     : "—"}
                 </p>
-                <p className="text-sm text-sage-500">Avg Severity</p>
+                <p className="text-sm font-medium text-sage-500">Avg Severity</p>
               </div>
-              <div className="rounded-lg bg-sage-50 p-4 text-center">
+              <div className="rounded-xl bg-gradient-to-br from-sage-50 to-white p-4 text-center border border-sage-100">
                 <p className="text-2xl font-bold text-sage-800">
                   {journal.length}
                 </p>
-                <p className="text-sm text-sage-500">Journal Entries</p>
+                <p className="text-sm font-medium text-sage-500">Journal Entries</p>
               </div>
-              <div className="rounded-lg bg-sage-50 p-4 text-center">
+              <div className="rounded-xl bg-gradient-to-br from-sage-50 to-white p-4 text-center border border-sage-100">
                 <p className="text-2xl font-bold text-sage-800">
                   {meals.length}
                 </p>
-                <p className="text-sm text-sage-500">Meals Logged</p>
+                <p className="text-sm font-medium text-sage-500">Meals Logged</p>
               </div>
             </div>
           </div>

@@ -155,7 +155,7 @@ export default function JournalPage() {
         </div>
         <button
           onClick={() => openForm()}
-          className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700"
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-green-600/20 transition-all hover:shadow-lg hover:brightness-110"
         >
           <Plus className="h-4 w-4" />
           Log Meal
@@ -163,15 +163,15 @@ export default function JournalPage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/30 p-4 pt-16">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-sage-900">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/30 backdrop-blur-sm p-4 pt-16 animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-slide-up">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-sage-900">
                 {editingId ? "Edit Entry" : "Log Meal"}
               </h2>
               <button
                 onClick={() => { setShowForm(false); setEditingId(null); }}
-                className="rounded-lg p-1 text-sage-400 hover:bg-sage-100"
+                className="rounded-xl p-1.5 text-sage-400 hover:bg-sage-50 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -179,7 +179,7 @@ export default function JournalPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-sage-700 mb-1">
+                <label className="block text-sm font-semibold text-sage-700 mb-1.5">
                   Meal
                 </label>
                 <div className="flex gap-2">
@@ -188,9 +188,9 @@ export default function JournalPage() {
                       key={m}
                       type="button"
                       onClick={() => setMealName(m)}
-                      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                      className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition-all ${
                         mealName === m
-                          ? "bg-green-600 text-white"
+                          ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-sm"
                           : "bg-sage-100 text-sage-600 hover:bg-sage-200"
                       }`}
                     >
@@ -201,7 +201,7 @@ export default function JournalPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-sage-700 mb-1">
+                <label className="block text-sm font-semibold text-sage-700 mb-1.5">
                   What did you eat?
                 </label>
                 <textarea
@@ -210,12 +210,12 @@ export default function JournalPage() {
                   placeholder="e.g., Rice with grilled chicken, steamed broccoli"
                   required
                   rows={2}
-                  className="w-full rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 placeholder-sage-400 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                  className="w-full rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-sage-700 mb-1">
+                <label className="block text-sm font-semibold text-sage-700 mb-1.5">
                   Potential triggers
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -224,9 +224,9 @@ export default function JournalPage() {
                       key={trigger}
                       type="button"
                       onClick={() => toggleTrigger(trigger)}
-                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
                         selectedTriggers.includes(trigger)
-                          ? "bg-red-100 text-red-700"
+                          ? "bg-red-100 text-red-700 shadow-sm"
                           : "bg-sage-100 text-sage-600 hover:bg-sage-200"
                       }`}
                     >
@@ -237,7 +237,7 @@ export default function JournalPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-sage-700 mb-2">
+                <label className="block text-sm font-semibold text-sage-700 mb-2">
                   How did you feel after?
                 </label>
                 <div className="flex gap-2">
@@ -246,9 +246,9 @@ export default function JournalPage() {
                       key={rating}
                       type="button"
                       onClick={() => setFeelingAfter(rating)}
-                      className={`flex-1 rounded-lg py-2 text-center text-sm font-medium transition-colors ${
+                      className={`flex-1 rounded-xl py-2.5 text-center text-sm font-semibold transition-all ${
                         feelingAfter === rating
-                          ? feelingEmojis[rating].color
+                          ? `${feelingEmojis[rating].color} shadow-sm`
                           : "bg-sage-100 text-sage-500 hover:bg-sage-200"
                       }`}
                     >
@@ -259,7 +259,7 @@ export default function JournalPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-sage-700 mb-1">
+                <label className="block text-sm font-semibold text-sage-700 mb-1.5">
                   Notes (optional)
                 </label>
                 <input
@@ -267,13 +267,13 @@ export default function JournalPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Any additional details"
-                  className="w-full rounded-lg border border-sage-200 px-4 py-2.5 text-sage-800 placeholder-sage-400 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                  className="w-full rounded-xl border border-sage-200 bg-white px-4 py-3 text-sage-800 placeholder-sage-400 outline-none transition-all focus:border-green-400 focus:ring-4 focus:ring-green-100/60"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full rounded-lg bg-green-600 py-2.5 font-medium text-white transition-colors hover:bg-green-700"
+                className="w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 py-3 font-semibold text-white shadow-md shadow-green-600/20 transition-all hover:shadow-lg hover:brightness-110"
               >
                 {editingId ? "Save Changes" : "Log Entry"}
               </button>
@@ -283,14 +283,13 @@ export default function JournalPage() {
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-sage-400">Loading...</div>
+        <div className="text-center py-16 text-sage-400">Loading...</div>
       ) : entries.length === 0 ? (
-        <div className="rounded-xl border border-sage-200 bg-white p-12 text-center">
-          <UtensilsCrossed
-            className="mx-auto h-12 w-12 text-sage-300"
-            strokeWidth={1}
-          />
-          <h3 className="mt-4 text-lg font-medium text-sage-700">
+        <div className="rounded-2xl border border-sage-200/80 bg-white p-16 text-center shadow-sm">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-sage-50">
+            <UtensilsCrossed className="h-8 w-8 text-sage-300" strokeWidth={1.5} />
+          </div>
+          <h3 className="mt-4 text-lg font-bold text-sage-700">
             No journal entries yet
           </h3>
           <p className="mt-1 text-sage-500">
@@ -301,19 +300,19 @@ export default function JournalPage() {
         <div className="space-y-6">
           {Object.entries(grouped).map(([date, dateEntries]) => (
             <div key={date}>
-              <h3 className="text-sm font-medium text-sage-500 mb-3">
+              <h3 className="text-sm font-semibold text-sage-400 mb-3">
                 {date}
               </h3>
               <div className="space-y-2">
                 {dateEntries.map((entry) => (
                   <div
                     key={entry.id}
-                    className="rounded-xl border border-sage-200 bg-white p-4"
+                    className="rounded-2xl border border-sage-200/80 bg-white p-4 shadow-sm transition-all hover:shadow-md"
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="rounded-full bg-sage-100 px-2.5 py-0.5 text-xs font-medium text-sage-600">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="rounded-full bg-sage-100 px-2.5 py-0.5 text-xs font-semibold text-sage-600">
                             {entry.mealName}
                           </span>
                           <span className="text-xs text-sage-400">
@@ -324,7 +323,7 @@ export default function JournalPage() {
                           </span>
                           {entry.feelingAfter && (
                             <span
-                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                                 feelingEmojis[entry.feelingAfter]?.color || ""
                               }`}
                             >
@@ -332,13 +331,13 @@ export default function JournalPage() {
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 text-sage-700">{entry.foods}</p>
+                        <p className="mt-1.5 text-sage-700">{entry.foods}</p>
                         {entry.triggers && (
                           <div className="mt-2 flex flex-wrap gap-1">
                             {entry.triggers.split(",").map((t) => (
                               <span
                                 key={t}
-                                className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-600"
+                                className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600"
                               >
                                 {t}
                               </span>
@@ -354,7 +353,7 @@ export default function JournalPage() {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => openForm(entry)}
-                          className="rounded-lg p-1.5 text-sage-400 hover:bg-sage-100 hover:text-sage-600"
+                          className="rounded-xl p-1.5 text-sage-400 hover:bg-sage-50 hover:text-sage-600 transition-colors"
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
@@ -362,13 +361,13 @@ export default function JournalPage() {
                           <div className="flex items-center gap-1 text-xs">
                             <button
                               onClick={() => handleDelete(entry.id)}
-                              className="rounded-lg bg-red-100 px-2 py-1 font-medium text-red-600 hover:bg-red-200"
+                              className="rounded-lg bg-red-100 px-2.5 py-1 font-medium text-red-600 hover:bg-red-200 transition-colors"
                             >
                               Yes
                             </button>
                             <button
                               onClick={() => setConfirmingDeleteId(null)}
-                              className="rounded-lg bg-sage-100 px-2 py-1 font-medium text-sage-600 hover:bg-sage-200"
+                              className="rounded-lg bg-sage-100 px-2.5 py-1 font-medium text-sage-600 hover:bg-sage-200 transition-colors"
                             >
                               No
                             </button>
@@ -376,7 +375,7 @@ export default function JournalPage() {
                         ) : (
                           <button
                             onClick={() => setConfirmingDeleteId(entry.id)}
-                            className="rounded-lg p-1.5 text-sage-400 hover:bg-red-50 hover:text-red-500"
+                            className="rounded-xl p-1.5 text-sage-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
