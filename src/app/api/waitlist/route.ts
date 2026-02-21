@@ -17,8 +17,10 @@ export async function POST(request: Request) {
       );
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+
     const existing = await prisma.waitlistEntry.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
     });
 
     if (existing) {
@@ -29,7 +31,7 @@ export async function POST(request: Request) {
     }
 
     await prisma.waitlistEntry.create({
-      data: { email: email.toLowerCase() },
+      data: { email: normalizedEmail },
     });
 
     return NextResponse.json({ success: true });

@@ -20,8 +20,10 @@ export async function POST(request: Request) {
       );
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+
     const existing = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
     });
 
     if (existing) {
@@ -35,13 +37,13 @@ export async function POST(request: Request) {
 
     const user = await prisma.user.create({
       data: {
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         name: name || null,
         passwordHash,
       },
     });
 
-    await createSession(user.id, user.email, user.name);
+    await createSession(user.id, user.email, user.name, passwordHash);
 
     return NextResponse.json({
       user: { id: user.id, email: user.email, name: user.name },
