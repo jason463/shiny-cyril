@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  name           String?
+  passwordHash   String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  symptoms       Symptom[]
+  medications    Medication[]
+  mealLogs       MealLog[]
+  protocols      Protocol[]
+  journalEntries JournalEntry[]
+}
+
+model Symptom {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  severity  Int
+  notes     String?
+  timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
+}
+
+model Medication {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  dosage     String
+  frequency  String
+  timeOfDay  String?
+  notes      String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  logs       MedicationLog[]
+}
+
+model MedicationLog {
+  id           String     @id @default(cuid())
+  medicationId String
+  medication   Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  takenAt      DateTime   @default(now())
+  skipped      Boolean    @default(false)
+}
+
+model MealLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealTime  DateTime @default(now())
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model Protocol {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  active      Boolean         @default(true)
+  startDate   DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  phases      ProtocolPhase[]
+}
+
+model ProtocolPhase {
+  id           String    @id @default(cuid())
+  protocolId   String
+  protocol     Protocol  @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  durationDays Int
+  orderIndex   Int
+  completed    Boolean   @default(false)
+  startDate    DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+model JournalEntry {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealName     String
+  foods        String
+  triggers     String?
+  feelingAfter Int?
+  notes        String?
+  timestamp    DateTime @default(now())
+  createdAt    DateTime @default(now())
+}
