@@ -28,50 +28,41 @@ float tunnel(vec3 p) {
   return max(t, -(q.y + 1.15));
 }
 
-// ---- variant 0: KIFS cathedral
+// ---- variant 0: KIFS gothic cathedral (recursive pointed-arch IFS)
+float gLine;   // distance to emissive filaments (variant 0)
+const float GW = 2.4, GB = 2.4, GF = 1.2;
+float archEl(vec3 q) {
+  float h0 = 2.0, c = 1.4, R = GW + c;
+  float ax = abs(q.x);
+  float a = q.y > h0 ? abs(length(vec2(ax + c, q.y - h0)) - R) : abs(ax - GW);
+  float th = q.y > h0 ? .15 : .22;
+  vec2 e = vec2(a - th, abs(q.z) - .2);
+  float rib = length(max(e, 0.)) + min(max(e.x, e.y), 0.);
+  gLine = min(gLine, length(vec2(a, abs(q.z) - .24)) + 0.);
+  return max(rib, -q.y);
+}
 float deKIFS(vec3 p) {
   vec4 tr = vec4(1e3);
-  float sub = fract(iParams.x * 3.);
   vec3 q = p;
-  if (sub < .5) {
-    // menger-style KIFS hall, tall nave
-    q.y *= .6;
-    q.z = mod(q.z + 3., 6.) - 3.;
-    q.x = mod(q.x + 3., 6.) - 3.;
-    q.y = mod(q.y + 3., 6.) - 3.;
-    q /= 3.;
-    float s = 1. / 3.;
-    float a1 = .25 * sin(gMorph * .7), a2 = .18 * sin(gMorph * .53 + 1.);
-    for (int i = 0; i < 5; i++) {
-      q = abs(q);
-      if (q.x < q.y) q.xy = q.yx;
-      if (q.x < q.z) q.xz = q.zx;
-      if (q.y < q.z) q.yz = q.zy;
-      if (i > 0) { q.xy *= rot(a1); q.yz *= rot(a2); }
-      q = q * 3. - vec3(2., 2., 0.);
-      if (q.z > 1.) q.z -= 2.;
-      s *= 3.;
-      tr = min(tr, vec4(abs(q), dot(q, q)));
-    }
-    gTrap = tr;
-    return .6 * sdBox(q, vec3(1.)) / s;
-  }
-  // generic KIFS
-  q.z = mod(q.z + 2., 4.) - 2.;
-  q.x = abs(q.x);
-  float s = 1.;
-  float a1 = .35 + .2 * sin(gMorph * .7), a2 = .25 + .15 * sin(gMorph * .53 + 1.);
-  vec3 off = vec3(2.6, 2.2, 1.4);
-  for (int i = 0; i < 7; i++) {
-    q = abs(q);
+  q.z = mod(q.z + GB * .5, GB) - GB * .5;
+  q.y += GF;
+  float d = 1e3, s = 1.;
+  float a1 = .12 * sin(gMorph * .7), a2 = .1 * sin(gMorph * .53 + 1.);
+  for (int i = 0; i < 4; i++) {
+    float lprev = gLine;
+    gLine = 1e3;
+    float e = archEl(q) / s;
+    gLine = min(lprev, gLine / s);
+    if (e < d) { d = e; tr = vec4(float(i), q.y / 5., abs(q.x) / GW, 0.); }
+    q.x = abs(q.x) - GW;
+    q.z = abs(q.z) - GB * .5;
+    q.xz = vec2(q.z, -q.x);
     q.xy *= rot(a1);
-    q.xz *= rot(a2);
-    q = q * 1.65 - off * .65;
-    s *= 1.65;
-    tr = min(tr, vec4(abs(q), dot(q, q)));
+    q.yz *= rot(a2);
+    q *= 2.; s *= 2.;
   }
   gTrap = tr;
-  return sdBox(q, vec3(1.2, 2.5, .5)) / s;
+  return min(d, p.y + GF);
 }
 
 // ---- variant 1: Mandelbox halls
@@ -150,8 +141,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   int steps = 0;
   for (int i = 0; i < 72; i++) {
     vec3 p = ro + rd * t;
+    gLine = 1e3;
     d = map(p);
-    glow += exp(-d * 40.) * .03;
+    glow += gVar == 0 ? .002 / (gLine * gLine + .002) : exp(-d * 40.) * .03;
     if (d < .0015 * t) { hit = true; break; }
     t += d * .9;
     steps = i;

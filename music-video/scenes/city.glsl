@@ -16,7 +16,7 @@
 
 #define CX 8.
 #define CZ 10.
-#define AV 5.
+#define AV 6.
 #define FAR 260.
 
 float gPix, gHS, gGap, gPeak, gFlip, gGlitch, gRain, gKickWave, gCamZ;
@@ -24,6 +24,8 @@ float gPix, gHS, gGap, gPeak, gFlip, gGlitch, gRain, gKickWave, gCamZ;
 // ---- city layout --------------------------------------------------------------
 // cell.x = column (0 = the avenue, empty), cell.y = block along z
 void bldg(vec2 cell, out vec2 c, out vec2 hs, out float h, out vec2 hs2, out float h2, out float pres) {
+  pres = 0.; c = vec2(0.); hs = vec2(1.); h = 0.; hs2 = hs; h2 = 0.;
+  if (abs(cell.x) < .5) return;
   vec3 r = hash33(vec3(cell, 7.31) + .13);
   vec3 q = hash33(vec3(cell.yx, 3.17) + .71);
   c = cell * vec2(CX, CZ) + vec2(0., CZ * .5);
@@ -40,7 +42,7 @@ void bldg(vec2 cell, out vec2 c, out vec2 hs, out float h, out vec2 hs2, out flo
   h = hb * gHS;
   h2 = 0.; hs2 = hs;
   if (r.z > .45 && hb < 60.) { h2 = h + mix(4., 16., fract(r.z * 7.13)) * gHS; hs2 = hs * mix(.45, .75, fract(q.z * 5.3)); }
-  pres = ax < .5 ? 0. : step(.07, fract(r.x * 13.7 + q.y));
+  pres = step(.07, fract(r.x * 13.7 + q.y));
 }
 
 vec2 iBox(vec3 ro, vec3 ird, vec3 b0, vec3 b1) {
@@ -216,32 +218,38 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     if (abs(n.y) < .5) {
       vec2 fuv = abs(n.x) > .5 ? vec2(p.z, p.y) : vec2(p.x, p.y);
       float u0 = abs(n.x) > .5 ? hb0.z : hb0.x, u1 = abs(n.x) > .5 ? hb1.z : hb1.x;
-      // windows
-      vec2 wsz = vec2(mix(.45, .9, bid.x), mix(.55, .85, bid.y));
+      // windows: floors x columns, lit in blocks, a few hot ones
+      float fh = mix(.40, .62, bid.y);
+      float cw = mix(.30, .55, bid.x);
+      vec2 wsz = vec2(cw, fh);
       vec2 wp = fuv / wsz;
       vec2 wc = floor(wp), wf = fract(wp) - .5;
       float wh = hash12(wc + bid.xy * 91.7);
-      float floorH = hash12(vec2(wc.y, bid.x * 77.) + floor(wc.x / 6.) * 3.1);
-      float litP = mix(.15, .7, bid.y) * step(.25, floorH);
-      float lit = step(1. - litP, wh);
+      float blk = hash12(vec2(wc.y, floor(wc.x / 5.)) + bid.xy * 31.3);
+      float litP = mix(.25, .7, fract(bid.y * 5.3));
+      float lit = step(1. - litP, wh) * step(.3, blk);
+      lit = max(lit, step(.94, blk));
       vec2 fw = vec2(fp) / wsz;
-      vec2 ext = vec2(mix(.25, .42, bid.x), mix(.28, .4, bid.y));
+      vec2 ext = vec2(mix(.26, .42, bid.x), mix(.2, .36, fract(bid.y * 7.1)));
       float shape = clamp((ext.x - abs(wf.x)) / fw.x + .5, 0., 1.) * clamp((ext.y - abs(wf.y)) / fw.y + .5, 0., 1.);
-      float lod = smoothstep(.3, 1., max(fw.x, fw.y));
-      float avg = litP * .8 * 4. * ext.x * ext.y;
-      float win = mix(shape * lit, avg, lod);
-      vec3 wcol = mix(mix(cC, cB, step(.6, fract(wh * 7.3))), vec3(1.), .3);
-      wcol = mix(wcol, cD, step(.92, fract(wh * 13.1)));
-      float wb = mix(.35, 1.1, fract(wh * 3.7));
+      float lod = smoothstep(.25, .9, max(fw.x, fw.y));
+      float avgB = litP * .78 * 4. * ext.x * ext.y * .45;
+      float wb = .18 + 1.6 * pow(fract(wh * 3.7), 4.);
       // hat flicker subset
       float fl2 = fract(wh * 29.3);
-      wb *= fl2 < .12 ? (.2 + 2.5 * aHat) : 1.;
+      wb *= fl2 < .1 ? (.1 + 3. * aHat) : 1.;
+      float win = mix(shape * lit * wb, avgB, lod);
+      float warm = step(.55, fract(bid.x * 3.3 + bid.z));
+      vec3 wcol = warm > .5 ? mix(cD, vec3(1., .8, .6), .45) : mix(cC * 1.5, cB, step(.5, fract(wh * 7.3)));
+      wcol = mix(wcol, vec3(1.), .12);
       // kick wave through the city
-      float wave = waveAmt * exp(-abs(tHit - gKickWave) * .12) * 2.5;
-      vec3 e = wcol * win * wb * (pulse + wave);
-      // facade glass + uplight
-      vec3 base = cA * .25 + refl * fres * .9 + cC * .05 * exp(-p.y * .08) + cD * .03 * exp(-p.y * .2);
-      col = base * (1. - win) + e;
+      float wave = waveAmt * exp(-abs(tHit - gKickWave) * .1) * 3.;
+      vec3 e = wcol * win * (pulse + wave);
+      // dark glass with smeared neon reflections + street uplight
+      float smear = vnoise(vec2(fuv.x * .35 + bid.x * 40., p.y * .04));
+      vec3 base = cA * .18 + (refl * .35 + mix(cB, cD, smear) * .06 * smoothstep(.45, .9, smear)) * fres
+                + cC * .06 * exp(-p.y * .08) + cD * .025 * exp(-p.y * .2);
+      col = base * (1. - min(win * 3., 1.) * (1. - lod)) + e;
       // neon edges
       float de = min(fuv.x - u0, u1 - fuv.x);
       float dt = hb1.y - p.y;
@@ -317,6 +325,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   float T = exp(-max(od, 0.));
   vec3 fogC = mix(cC * .2, cA * .7 + cB * .05, smoothstep(5., 60., .5 * (yb + ye)));
   fogC += cD * .03;
+  fogC += (cB * .35 + cD * .12) * exp(-(rd.x * rd.x * 10. + (rd.y - .03) * (rd.y - .03) * 50.));
   float lightning = aSnare * aSnare * smoothstep(.6, 1., I) * step(.5, fract(aBarCount * .5));
   fogC += vec3(.5, .55, .8) * lightning * .5;
   col = col * T + fogC * (1. - T);
@@ -425,14 +434,14 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
       float h1 = hash11(ca * 3.17 + float(L) * 19.3);
       float zz = zr * .12 + h1 * 7. + iTime * 1.5;
       float seg = fract(zz);
-      float on = step(1. - (.25 + .35 * gRain), hash11(floor(zz) + ca * 1.3));
+      float on = step(1. - (.1 + .3 * gRain), hash11(floor(zz) + ca * 1.3));
       float fpR = tr * gPix;
       float da = abs(fract(a / cw) - .5) * cw;
-      float ln = lineAA(da, .006, fpR);
-      float len = smoothstep(0., .05, seg) * smoothstep(.55, .1, seg);
+      float ln = lineAA(da, .004, fpR);
+      float len = smoothstep(0., .05, seg) * smoothstep(.35, .05, seg);
       racc += mix(cC, cB, h1) * on * ln * len * exp(-tr * .03);
     }
-    col += racc * (1.2 + 1.5 * gRain) * (1. + aKick * I * .5);
+    col += racc * (.5 + 1.8 * gRain) * (1. + aKick * I * .5);
   }
 
   fragColor = vec4(max(col, 0.), 1.);
