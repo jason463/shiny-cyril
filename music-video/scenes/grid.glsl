@@ -87,21 +87,22 @@ vec3 lasers(float az, float el, float blur) {
   if (gI < .25) return acc;
   float on = smoothstep(.25, .6, gI);
   float bar = floor(aBarCount * .5);
-  for (int i = 0; i < 7; i++) {
+  float e = max(el, 0.);
+  for (int i = 0; i < 9; i++) {
     float fi = float(i);
     float h = hash11(fi * 7.31 + bar * 1.73 + iSeed * 13.);
     float h2 = hash11(fi * 3.17 + bar * 5.11 + 2.);
-    if (h2 > .35 + .6 * gI) continue;
-    float base = (fi - 3.) * .2 + (h - .5) * .12;
-    float tilt = (h - .5) * 1.1 + sin(iTime * .35 + fi * 1.7) * .12;
-    float x = az - base - max(el, 0.) * tilt;
-    float w = max(.0016, gPix * 1.1) * (1. + blur * 7.);
-    float core = .0016 / w * exp(-x * x / (w * w));
-    float halo = .05 * exp(-abs(x) * 70. / (1. + blur * 3.));
-    float fade = exp(-max(el, 0.) * 2.2) * smoothstep(-.01, .02, el);
-    vec3 c = mix(cB, cD, step(.7, h)) ;
-    float flick = .65 + .5 * aHat + .3 * aKick;
-    acc += c * (core * 2.6 + halo) * fade * flick;
+    if (h2 > .3 + .65 * gI) continue;
+    float base = (fi - 4.) * .13 + (h - .5) * .08;
+    float tilt = (h - .5) * .5 + sin(iTime * .4 + fi * 1.7) * .08;
+    float x = az - base - e * tilt;
+    float w = max(.0014, gPix * 1.) * (1. + blur * 5.);
+    float core = .0014 / w * exp(-x * x / (w * w));
+    float halo = exp(-abs(x) * 160. / (1. + blur * 2.));
+    float fade = exp(-e * 3.2) * smoothstep(-.004, .01, el);
+    vec3 c = mix(cB, cD, step(.72, h));
+    float flick = .7 + .45 * aHat + .35 * aKick;
+    acc += c * (core * 3. + halo * .12 + exp(-e * 40.) * halo * .5) * fade * flick;
   }
   return acc * on;
 }
@@ -137,9 +138,9 @@ vec3 sunCol(vec2 sp, float blur, out float cover) {
   cover = disc * cut * sg;
   // gradient: hot top -> key bottom
   float v = clamp(q.y * .5 + .5, 0., 1.);
-  vec3 top = mix(cD, vec3(1., .9, .75), .45);
-  vec3 bot = mix(cD, cB, .8);
-  vec3 c = mix(bot, top, smoothstep(.0, 1., v)) * (1.1 + 2.2 * v * v);
+  vec3 top = mix(cD, vec3(1., .82, .55), .3);
+  vec3 bot = mix(cD, cB, .85);
+  vec3 c = mix(bot, top, smoothstep(.1, .95, v)) * (.45 + 1.5 * v * v);
   // crack edges glow hot when shattered
   float edge = gShat * (1. - smoothstep(0., pixS * N * 3., abs(fk - gap - pixS * N))) * disc;
   c *= 1. + aSnare * .7;
@@ -152,7 +153,7 @@ vec3 sky(vec3 rd, float blur, bool stars) {
   // base gradient + horizon glow
   vec3 col = mix(cA * .9 + cC * .03, cA * .2, smoothstep(-.02, .55, el));
   float hz = exp(-max(el, 0.) * 10.);
-  col += mix(cC, cD, .55 + .25 * gSun) * hz * (.12 + .3 * gSun) * (.6 + .4 * gI);
+  col += mix(cC, cD, .55 + .25 * gSun) * hz * (.08 + .18 * gSun) * (.6 + .4 * gI);
   // nebula (stronger at night)
   float nebA = (1. - .7 * gSun) * smoothstep(.0, .25, el);
   if (stars && nebA > 0.01) {
@@ -165,19 +166,20 @@ vec3 sky(vec3 rd, float blur, bool stars) {
   }
   // stars
   if (stars && el > 0.) {
-    float sA = (1. - .55 * gSun) * smoothstep(.0, .2, el);
+    float sA = (1. - .6 * gSun) * smoothstep(.0, .25, el);
     for (int L = 0; L < 2; L++) {
-      float sc = L == 0 ? 70. : 150.;
+      float sc = L == 0 ? 55. : 120.;
       vec2 sq = vec2(az, el) * sc + float(L) * 17.;
       vec2 id = floor(sq), f = fract(sq) - .5;
       vec2 h = hash22(id + iSeed * 31.);
       vec2 o = (h - .5) * .7;
       float d = length(f - o) / sc;              // angular distance
-      float sig = gPix * .9;
+      float sig = gPix * .75;
       float b = exp(-d * d / (sig * sig));
       float m = hash12(id * 1.7 + 4.);
-      float tw = .6 + .4 * sin(iTime * (2. + 4. * m) + m * 40.) + aHat * .6;
-      b *= step(L == 0 ? .55 : .7, m) * (L == 0 ? 1.8 : .8) * tw;
+      float tw = .7 + .3 * sin(iTime * (2. + 4. * m) + m * 40.) + aHat * .5;
+      float lum = pow(fract(m * 13.1), 3.);
+      b *= step(L == 0 ? .78 : .86, m) * (L == 0 ? 2.5 : 1.2) * (.15 + lum) * tw;
       col += mix(vec3(1.), cC + .3, h.x * .6) * b * sA;
     }
   }
@@ -189,7 +191,7 @@ vec3 sky(vec3 rd, float blur, bool stars) {
   vec3 s = sunCol(sp, blur, cover);
   float r = length(sp);
   col = mix(col, vec3(0.), cover * .9) + s;
-  float halo = gSun * (exp(-max(r - 1., 0.) * 2.2) * .22 + exp(-max(r - 1., 0.) * 9.) * .35) * (1. - cover);
+  float halo = gSun * (exp(-max(r - 1., 0.) * 3.) * .1 + exp(-max(r - 1., 0.) * 12.) * .3) * (1. - cover);
   col += mix(cD, cC, .25) * halo * (.6 + .5 * aSnare + .2 * gI);
   // clap flare: anamorphic streak through the sun
   float sy = (el - gSunEl);
@@ -210,8 +212,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   gBHi = smoothstep(.3, 1., specAvg(.72));
   gHS = mix(4., 22., P.x);
   gSun = smoothstep(0., .25, P.y);
-  gSunR = mix(.14, .36, P.y);
-  gSunEl = mix(.05, .1, P.y);
+  gSunR = mix(.12, .29, P.y);
+  gSunEl = mix(.04, .07, P.y);
   gShat = smoothstep(.82, 1., gI) * (.55 + .45 * smoothstep(0., 3., iLocal));
 
   // camera: travel surges on every kick, banks left/right on the bar
@@ -261,11 +263,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     col = sky(rd, 0., true);
   } else {
     // ---- shading common
-    vec2 gl = gridAA(guv, gdd, .045);
+    vec2 gl = gridAA(guv, gdd, .03);
     float line = max(gl.x, gl.y);
     vec2 gs = gridAA(guv, gdd, .2);                  // soft neon halo around lines
     float soft = max(gs.x, gs.y) - line * .5;
-    float lineB = (1.1 + .9 * gI) * (1. + pulse * 4.5);
+    float lineB = (.7 + .6 * gI) * (1. + pulse * 4.5);
     if (mat < 1.5) {
       // ---- wet glass floor
       float rip = exp(-t * .03);
@@ -282,9 +284,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         if (q.y < terrainH(q.xz)) { occ = 1. - tt / 90.; break; }
         tt *= 2.1;
       }
-      vec3 refl = sky(rr, 1., false);
+      vec3 rrs = normalize(vec3(rr.x, rr.y * .55, rr.z));
+      vec3 refl = sky(rrs, 1., false);
       refl = mix(refl, haze * .5 + cA * .1, clamp(occ, 0., 1.) * .95);
-      col = cA * .04 + refl * fres * .85;
+      col = cA * .04 + refl * fres * .55;
       vec3 lc = mix(cB, cD, smoothstep(20., 140., t) * .5);
       col += lc * (line * lineB + max(soft, 0.) * .12 * (1. + pulse * 2.));
       col += mix(cD, vec3(1.), .3) * pulse * .12 * exp(-abs(zr - front) * .5);
