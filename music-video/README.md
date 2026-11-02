@@ -12,6 +12,25 @@ timeline.js edit decision list: shots on the bar grid, palettes, FX automation, 
 render/     preview.js (scene stills / strips), render.js (offline segmented render + mux)
 ```
 
+## The edit
+
+| time | section | scenes |
+|---|---|---|
+| 0:00 | cold open | ghost (figure assembling from embers) + title |
+| 0:08 | intro | lasers (first beams through the haze) |
+| 0:16 | groove | tunnel, lasers + crowd |
+| 0:31 | build | city, kaleido, tunnel, fractal — cuts accelerate to quarter-bars |
+| 0:55 | **drop 1** | fractal cathedral, lasers, tunnel, chrome, kaleido |
+| 1:18 | post-drop | grid (synthwave drive), vortex |
+| 1:34 | breakdown | ghost — "U WEREN'T HERE" / "I REALLY MISS YOU", letterboxed |
+| 1:50 | riser | vortex collapsing into a singularity, blackout, title slam |
+| 1:58 | **drop 2** | 38 bars across acid / afterglow / dream / ember palettes, peak montage of beat-length cuts |
+| 3:12 | outro | lasers fade, the figure burns away into embers |
+
+Verified on the final render: frame-to-frame brightness changes correlate with kick onsets at
+exactly 0 frames of lag (r = 0.65 in the drops). Contains flashing lights (peaks around 3 flashes/s
+in the drop-2 montage).
+
 ## Re-render the video
 
 Needs Node, Playwright's Chromium, ffmpeg and Python 3 with `librosa`.
@@ -27,8 +46,16 @@ node render/render.js --w 1280 --h 720 --final out/u_werent_here.mp4 --audio pat
 node render/render.js --frames 1650,3000,3600 --pngdir out/stills
 ```
 
-Rendering uses SwiftShader (software GL) when no GPU is present — roughly 0.5–1 s per frame
-at 720p on 4 cores.
+Rendering uses SwiftShader (software GL) when no GPU is present — roughly 0.6–0.9 s per frame
+at 720p on 4 cores (about 75 minutes for the whole song). `--defer scene1,scene2` skips segments
+showing those scenes so they can be rendered later; existing segments are reused, so an
+interrupted render resumes. Shareable encode used for the delivered file:
+
+```bash
+ffmpeg -f concat -safe 0 -i out/segs_1280x720/list.txt -i song.mp3 -map 0:v -map 1:a \
+  -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -c:a aac -b:a 256k -shortest \
+  -movflags +faststart out/U_Werent_Here_Afterglow_Remix_Music_Video.mp4
+```
 
 ## Watch it live (real-time, GPU)
 
