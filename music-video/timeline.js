@@ -40,8 +40,8 @@ window.MV_TIMELINE = function (A, T) {
     { name: 'riser', a: bar(52), b: bar(56), pal: 'noir', int: 0.2 },
     { name: 'drop2a', a: bar(56), b: bar(64), pal: 'acid', int: 1.0 },
     { name: 'drop2b', a: bar(64), b: bar(72), pal: 'afterglow', int: 1.0 },
-    { name: 'drop2c', a: bar(72), b: bar(80), pal: 'ember', int: 1.0 },
-    { name: 'drop2d', a: bar(80), b: bar(88), pal: 'dream', int: 1.0 },
+    { name: 'drop2c', a: bar(72), b: bar(80), pal: 'dream', int: 1.0 },
+    { name: 'drop2d', a: bar(80), b: bar(88), pal: 'ember', int: 1.0 },
     { name: 'drop2e', a: bar(88), b: bar(94), pal: 'acid', int: 1.0 },
     { name: 'outro', a: bar(94), b: END + 1, pal: 'afterglow', int: 0.3 },
   ];
@@ -65,78 +65,78 @@ window.MV_TIMELINE = function (A, T) {
   }
   const ramp = (a, b) => (t, p) => lerp(a, b, p);
 
-  // COLD OPEN — the figure that isn't there
-  S('ghost', '0', 0, (t, p) => [lerp(0.85, 0.35, sstep(0, 0.9, p)), 0.0, 0.35, 0.0], { int: 0.1 });
+  // COLD OPEN — the figure that isn't there (assembles from embers)
+  S('ghost', '0', 0, (t, p) => [lerp(0.85, 0.35, sstep(0, 0.9, p)), 0.0, 0.35, 0.0], { int: 0.1, seed: 0.37 });
   // INTRO — first lasers cut through the fog
-  S('lasers', 0, 2, [0.0, 0.0, 0.25, 0.85], { int: ramp(0.15, 0.3), trans: [5, 1.2] });
-  S('lasers', 2, 4, [0.15, 0.5, 0.55, 0.8], { int: ramp(0.3, 0.42) });
+  S('lasers', 0, 2, [0.0, 0.0, 0.25, 0.85], { int: ramp(0.15, 0.3), trans: [5, 1.2], seed: 0.5 });
+  S('lasers', 2, 4, [0.15, 0.5, 0.3, 0.45], { int: ramp(0.3, 0.42), seed: 0.21 });
   // GROOVE
-  S('tunnel', 4, 8, [0.0, 0.3, 0.45, 0.0], { int: 0.5, flash: 0.5 });
-  S('lasers', 8, 10, [0.6, 0.5, 0.2, 0.6], { int: 0.55, trans: [3, 0.18] });
-  S('lasers', 10, 12, [0.75, 0.0, 0.85, 0.7], { int: 0.6 });
+  S('tunnel', 4, 8, [0.0, 0.2, 0.2, 0.3], { int: 0.45, flash: 0.5, seed: 0.37 });
+  S('lasers', 8, 10, [0.7, 0.0, 0.2, 0.4], { int: 0.5, trans: [3, 0.18], seed: 0.37 });
+  S('lasers', 10, 12, [0.75, 0.5, 0.85, 0.5], { int: 0.58, seed: 0.66 });
   // BUILD — accelerating cuts
-  S('city', 12, 16, [0.0, 0.55, 0.6, 0.35], { int: ramp(0.5, 0.62), trans: [4, 0.45] });
-  S('kaleido', 16, 18, [0.25, 0.35, 0.6, 0.0], { int: 0.62, trans: [6, 0.3] });
-  S('tunnel', 18, 20, [0.5, 0.6, 0.6, 1.0], { int: 0.7, flash: 0.35 });
+  S('city', 12, 16, [0.0, 0.0, 0.0, 0.0], { int: 0.55, trans: [4, 0.45], seed: 0.22 });
+  S('kaleido', 16, 18, [0.3, 0.3, 0.4, 0.8], { int: 0.65, trans: [6, 0.3] });
+  S('tunnel', 18, 20, [1.0, 0.0, 0.5, 1.0], { int: 0.7, flash: 0.35, seed: 0.83, pal: 'dream' });
   S('fractal', 20, 21, [0.0, 0.25, 0.3, 0.55], { int: 0.72, flash: 0.3 });
   S('city', 21, 22, [1.0, 0.7, 0.2, 0.7], { int: 0.76, flash: 0.3 });
-  S('lasers', 22, 22.5, [0.8, 1.0, 0.6, 0.6], { int: 0.8, flash: 0.3 });
+  S('lasers', 22, 22.5, [0.8, 1.0, 1.0, 0.5], { int: 0.8, flash: 0.3 });
   S('kaleido', 22.5, 23, [0.6, 0.6, 0.7, 1.0], { int: 0.82, flash: 0.3 });
-  S('tunnel', 23, 23.25, [1.0, 0.8, 0.8, 0.0], { int: 0.85, flash: 0.25 });
-  S('fractal', 23.25, 23.5, [0.5, 0.6, 0.6, 0.8], { int: 0.85, flash: 0.25 });
+  S('tunnel', 23, 23.25, [0.3, 1.0, 0.3, 0.0], { int: 0.85, flash: 0.25 });
+  S('fractal', 23.25, 23.5, [0.5, 1.0, 0.5, 0.3], { int: 0.85, flash: 0.25 });
   S('ghost', 23.5, 23.75, [0.5, 1.0, 0.2, 1.0], { int: 0.9, flash: 0.25 });
-  S('vortex', 23.75, 24, (t, p) => [0.8, 0.8, 0.6, p], { int: 0.9 });
+  S('vortex', 23.75, 24, (t, p) => [0.6, 0.4, 0.5, 0.6 + 0.4 * p], { int: 0.9 });
   // DROP 1
-  S('fractal', 24, 28, [0.0, 0.0, 0.5, 0.85], { flash: 1.0, tag: 'drop' });
-  S('lasers', 28, 30, [1.0, 0.5, 0.6, 0.7], { flash: 0.6 });
-  S('tunnel', 30, 32, [0.5, 0.85, 0.7, 0.0], { flash: 0.6, pal: 'acid' });
+  S('fractal', 24, 28, [0.0, 0.0, 0.5, 0.85], { flash: 1.0, tag: 'drop', seed: 0.37 });
+  S('lasers', 28, 30, [1.0, 0.0, 0.3, 0.5], { flash: 0.6, seed: 0.37 });
+  S('tunnel', 30, 32, [0.0, 0.0, 0.0, 0.0], { flash: 0.6, seed: 0.55 });
   S('chrome', 32, 34, [0.5, 0.3, 0.6, 0.8], { flash: 0.5 });
-  S('fractal', 34, 35, [0.5, 0.6, 0.5, 1.0], { flash: 0.5, pal: 'acid' });
-  S('kaleido', 35, 36, [1.0, 0.6, 0.85, 1.0], { flash: 0.5, mirror: 2 });
+  S('fractal', 34, 35, [0.5, 1.0, 0.5, 0.3], { flash: 0.5, pal: 'acid' });
+  S('kaleido', 35, 36, [0.8, 0.8, 0.8, 1.0], { flash: 0.5, mirror: 2, pal: 'acid' });
   // POST-DROP cooldown
-  S('grid', 36, 40, [0.6, 1.0, 0.45, 0.0], { int: 0.6, trans: [4, 0.5] });
-  S('vortex', 40, 44, [0.35, 0.6, 0.7, 0.0], { int: ramp(0.55, 0.35), trans: [1, 1.2] });
+  S('grid', 36, 40, [0.3, 0.6, 0.6, 1.0], { int: 0.6, trans: [4, 0.5] });
+  S('vortex', 40, 44, [0.25, 0.3, 0.6, 0.0], { int: ramp(0.6, 0.4), trans: [1, 1.2] });
   // BREAKDOWN — U WEREN'T HERE
-  S('ghost', 44, 48, (t, p) => [lerp(0.1, 0.3, p), 0.5, 0.7, 0.0], { int: 0.15, trans: [5, 1.5] });
+  S('ghost', 44, 48, (t, p) => [lerp(0.1, 0.3, p), 0.5, 0.7, 0.0], { int: 0.15, trans: [5, 1.5], seed: 0.8 });
   S('ghost', 48, 50, (t, p) => [lerp(0.25, 0.45, p), 1.0, 0.5, 0.0], { int: 0.18, trans: [1, 1.0] });
   S('ghost', 50, 52, (t, p) => [lerp(0.35, 0.6, p), 0.0, 0.6, 1.0], { int: 0.2, trans: [1, 1.0] });
-  // RISER — collapse
-  S('vortex', 52, 55.5, (t, p) => [lerp(0.2, 1.0, p), 0.6, 0.85, sstep(0.15, 1.0, p)], { int: ramp(0.05, 0.6), trans: [7, 1.0] });
+  // RISER — collapse into the singularity
+  S('vortex', 52, 55.5, (t, p) => [0.25 * p, 0.3, 0.4, p], { int: ramp(0.3, 0.6), trans: [7, 1.0] });
   // (55.5 -> 56: black, only text)
   // DROP 2 / A — acid
   S('fractal', 56, 58, [1.0, 0.3, 0.6, 1.0], { flash: 1.0, tag: 'drop' });
-  S('lasers', 58, 60, [1.0, 1.0, 0.85, 0.8], { flash: 0.6 });
+  S('lasers', 58, 60, [0.8, 1.0, 1.0, 0.5], { flash: 0.6, seed: 0.6 });
   S('fractal', 60, 62, [0.0, 0.7, 0.8, 0.9], { flash: 0.6 });
-  S('kaleido', 62, 63, [0.8, 0.8, 0.8, 1.0], { flash: 0.5, mirror: 3 });
-  S('lasers', 63, 64, [0.6, 0.0, 0.5, 0.5], { flash: 0.5 });
+  S('kaleido', 62, 63, [1.0, 1.0, 1.0, 1.0], { flash: 0.5, mirror: 3 });
+  S('lasers', 63, 64, [0.9, 0.0, 0.2, 0.5], { flash: 0.5, seed: 0.44 });
   // DROP 2 / B — afterglow city + tunnel
-  S('city', 64, 66, [0.0, 0.8, 0.5, 1.0], { flash: 0.8, trans: [3, 0.15] });
-  S('tunnel', 66, 68, [1.0, 0.4, 0.8, 1.0], { flash: 0.5 });
-  S('city', 68, 70, [1.0, 0.6, 0.0, 0.8], { flash: 0.5 });
-  S('tunnel', 70, 71, [0.0, 1.0, 0.5, 0.0], { flash: 0.5 });
-  S('ghost', 71, 72, [0.6, 0.5, 0.3, 1.0], { flash: 0.5 });
-  // DROP 2 / C — ember chrome
+  S('city', 64, 66, [0.0, 0.0, 0.0, 0.0], { flash: 0.8, trans: [3, 0.15], seed: 0.07 });
+  S('tunnel', 66, 68, [0.5, 0.4, 1.0, 0.0], { flash: 0.5, seed: 0.83, pal: 'acid' });
+  S('city', 68, 70, [1.0, 0.3, 0.0, 0.4], { flash: 0.5 });
+  S('tunnel', 70, 71, [0.5, 0.6, 0.7, 1.0], { flash: 0.5 });
+  S('ghost', 71, 72, [0.6, 0.5, 0.3, 1.0], { flash: 0.5, pal: 'ember' });
+  // DROP 2 / C — dream chrome
   S('chrome', 72, 74, [0.8, 1.0, 0.8, 1.0], { flash: 0.8, trans: [4, 0.4] });
-  S('kaleido', 74, 76, [0.5, 0.5, 0.9, 0.0], { flash: 0.5 });
+  S('kaleido', 74, 76, [0.5, 0.5, 0.8, 0.0], { flash: 0.5, seed: 0.71, pal: 'ember' });
   S('chrome', 76, 78, [0.3, 0.0, 0.5, 0.6], { flash: 0.5 });
-  S('fractal', 78, 80, [0.5, 0.2, 0.7, 1.0], { flash: 0.5 });
-  // DROP 2 / D — dream drive
-  S('grid', 80, 84, [1.0, 1.0, 1.0, 1.0], { flash: 0.8, trans: [6, 0.3] });
-  S('lasers', 84, 86, [1.0, 0.5, 1.0, 0.9], { flash: 0.5 });
-  S('vortex', 86, 88, [1.0, 1.0, 0.6, 0.0], { flash: 0.5 });
+  S('fractal', 78, 80, [0.5, 1.0, 0.5, 0.6], { flash: 0.5, pal: 'ember' });
+  // DROP 2 / D — ember drive
+  S('grid', 80, 84, [0.8, 1.0, 0.5, 0.0], { flash: 0.8, trans: [6, 0.3] });
+  S('lasers', 84, 86, [0.8, 0.5, 0.0, 0.5], { flash: 0.5, seed: 0.91 });
+  S('vortex', 86, 88, [1.0, 0.3, 0.4, 0.0], { flash: 0.5 });
   // DROP 2 / E — peak montage
   S('fractal', 88, 89, [0.0, 0.9, 1.0, 1.0], { flash: 0.9 });
-  S('lasers', 89, 90, [1.0, 1.0, 1.0, 1.0], { flash: 0.5, mirror: 1 });
-  S('tunnel', 90, 90.5, [0.5, 1.0, 1.0, 0.0], { flash: 0.4 });
-  S('city', 90.5, 91, [0.0, 1.0, 0.3, 1.0], { flash: 0.4 });
+  S('lasers', 89, 90, [1.0, 1.0, 1.0, 1.0], { flash: 0.5, mirror: 1, seed: 0.44 });
+  S('tunnel', 90, 90.5, [0.5, 0.6, 0.7, 1.0], { flash: 0.4 });
+  S('city', 90.5, 91, [0.0, 0.6, 1.0, 1.0], { flash: 0.4 });
   S('kaleido', 91, 91.5, [1.0, 1.0, 1.0, 1.0], { flash: 0.4, mirror: 2 });
   S('chrome', 91.5, 92, [1.0, 1.0, 1.0, 1.0], { flash: 0.4 });
   const peak = ['fractal', 'grid', 'lasers', 'vortex', 'kaleido', 'tunnel', 'ghost', 'lasers'];
-  const peakP = [[1, 0.5, 1, 1], [1, 1, 1, 0], [1, 0, 1, 1], [1, 1, 1, 0.3], [1, 1, 1, 1], [1, 1, 1, 1], [0.7, 1, 0.3, 1], [1, 1, 0, 1]];
+  const peakP = [[1, 0.5, 1, 1], [0.5, 0.6, 0.2, 0], [0.8, 1, 1, 0.5], [1, 0.3, 0.4, 0], [1, 1, 1, 1], [1, 1, 1, 1], [0.7, 1, 0.3, 1], [0.8, 0.5, 0, 0.5]];
   peak.forEach((sc, i) => S(sc, 92 + i * 0.25, 92 + (i + 1) * 0.25, peakP[i], { flash: 0.3, mirror: i % 3 === 1 ? 1 : 0 }));
   // OUTRO — afterglow
-  S('lasers', 94, 99, [0.35, 0.0, 0.3, 0.9], { int: ramp(0.45, 0.15), flash: 0.9, trans: [2, 0.25] });
-  S('ghost', 99, String(END + 0.5), (t, p) => [lerp(0.3, 1.0, sstep(0.1, 0.95, p)), 0.5, 0.5, 0.0], { int: ramp(0.2, 0.05), pal: 'dream', trans: [5, 1.5] });
+  S('lasers', 94, 99, [0.5, 0.0, 0.3, 0.6], { int: ramp(0.45, 0.15), flash: 0.9, trans: [2, 0.25], seed: 0.5 });
+  S('ghost', 99, String(END + 0.5), (t, p) => [lerp(0.3, 1.0, sstep(0.1, 0.95, p)), 0.5, 0.5, 0.0], { int: ramp(0.2, 0.05), pal: 'dream', trans: [5, 1.5], seed: 0.8 });
 
   // ------------------------------------------------------------------ text
   const TXT = [];

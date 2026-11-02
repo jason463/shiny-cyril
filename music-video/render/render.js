@@ -60,8 +60,15 @@ function ffmpegWriter(file, W, H, crf) {
     const e = Math.min(s + segF, NF);
     const file = path.join(dir, `seg_${String(s).padStart(5, '0')}_${String(e).padStart(5, '0')}.mp4`);
     if (fs.existsSync(file) && !a.force) { console.log('skip existing', path.basename(file)); continue; }
+    if (a.defer) {   // --defer scene1,scene2 : skip segments that show these scenes (render them in a later run)
+      const deferred = String(a.defer).split(',');
+      const uses = await page.evaluate(([t0, t1]) => window.MV.timeline.shots.filter((x) => x.renderStart < t1 && x.end > t0).map((x) => x.scene), [(s - 45) / FPS, e / FPS]);
+      if (uses.some((x) => deferred.includes(x))) { console.log('defer', path.basename(file), '(uses', [...new Set(uses)].join(','), ')'); continue; }
+    }
     const tmp = file.replace('.mp4', '.part.mp4');
-    const warm = Math.max(0, s - 45);
+    // warm-up: feedback buffers only need history back to the start of the shots active at s
+    const rsMin = await page.evaluate((t) => Math.min(...window.MV.timeline.shots.filter((x) => x.renderStart <= t && x.end > t).map((x) => x.renderStart), t), s / FPS);
+    const warm = Math.max(0, Math.min(s - 8, Math.max(s - 45, Math.floor(rsMin * FPS))));
     for (let f = warm; f < s; f++) await page.evaluate((f) => window.MV.renderFrame(f), f);
     const w = ffmpegWriter(tmp, W, H, crf);
     // frames arrive via HTTP POST; write them to ffmpeg strictly in order

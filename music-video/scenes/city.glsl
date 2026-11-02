@@ -2,33 +2,44 @@
 // city — hyperspeed flight through an infinite neon megacity at night
 //
 // iParams.x  camera mode (continuous): 0 = corridor flight down the neon avenue between
-//            the towers (y~12, traffic streams below, blade signs whooshing past),
-//            1 = high aerial pass over the rooftops (y~70, pitched down into the canyon,
-//            megatowers + sky lasers), 0.5 = mid-height (y~40) between the two.
+//            the towers (y~12, under the skybridges, wet mirror street + traffic below,
+//            blade signs whooshing past), 1 = high aerial pass over the rooftops (y~70,
+//            pitched down into the glowing canyons, megatowers + sky lasers),
+//            0.5 = mid-height (y~40) between the two.
 // iParams.y  tower density/height: 0 = default skyline, 1 = 1.7x taller, fatter blocks with
-//            narrower streets (also enlarges the hologram a bit).
-// iParams.z  rain: 0 = light drizzle streaks, 1 = heavy storm (3 streak layers, more and
-//            brighter streaks, denser fog).
+//            narrower streets (signs/bridges placed higher, hologram a bit bigger).
+// iParams.z  rain: 0 = light drizzle + damp street, 1 = heavy storm (3 streak layers, more
+//            and brighter streaks, denser fog, mirror-wet avenue).
 // iParams.w  speed: 0 = default cruise, 1 = ~2.3x hyperspeed (longer rain streaks too).
 // iSeed      offsets the camera path / position along the infinite city.
 //
-// Audio: travel = iTime + aKickAcc (camera surges on every kick) + small FOV punch; kicks
-// also send a light shock-wave outward through the window grids and pulse the neon.
-// Claps flash half of the holo signs/screens, and every other bar at intensity > .6 fire
-// lightning (sky flash + forked bolt). Hats flicker a subset of windows. Lasers sweep on
-// an 8-beat cycle. Intensity > .8: neon colours flip per bar (hash), neon tubes stutter and
-// the giant avenue hologram glitches on claps. Every ~300 units the camera flies through
-// a giant hologram bust floating in the avenue (the "whoa" moment, ~every 10-25 s).
+// Look: three facade types (office ribbon glazing with ceiling lights/blinds, punched
+// residential grid with pilasters, dark glass curtain wall), coloured light spill from the
+// blade signs onto the avenue walls, skybridges with lit corridors crossing the avenue
+// (the camera flies under them), and a wet mirror avenue reflecting walls, signs, the
+// hologram and the vanishing-point glow.
+//
+// Audio: travel = iTime + aKickAcc (camera surges on every kick) + small FOV punch.
+// Kicks: the neon skybridges spanning the avenue strobe, a light shock-wave runs out
+// through the window grids, neon tubes, rooftop helipad rings and the vanishing-point glow
+// (and its streak on the wet road) pulse. Claps flash half of the holo signs/screens and
+// their light spill on the walls, and every other
+// bar at intensity > .6 fire lightning (sky flash + forked bolt). Hats flicker a subset of
+// windows. Lasers sweep on an 8-beat cycle. Intensity > .8: neon colours flip per bar
+// (hash), neon tubes stutter and the giant avenue hologram glitches on claps. Every ~300
+// units the camera flies through a giant hologram bust floating in the avenue (mirrored
+// in the wet asphalt) — the "whoa" moment, ~every 10-25 s.
 // ---------------------------------------------------------------------------
 
 #define CX 8.
 #define CZ 10.
 #define AV 6.
 #define FAR 230.
+#define SPB 32.
 
 vec3 nB, nC, nD;
-float gStreak;
-float gPix, gHS, gGap, gPeak, gFlip, gGlitch, gRain, gKickWave, gCamZ;
+float gStreak, gMega;
+float gPix, gHS, gGap, gPeak, gFlip, gGlitch, gRain, gKickWave, gCamZ, gKP, gI;
 
 // ---- city layout --------------------------------------------------------------
 // cell.x = column (0 = the avenue, empty), cell.y = block along z
@@ -46,7 +57,7 @@ void bldg(vec2 cell, out vec2 c, out vec2 hs, out float h, out vec2 hs2, out flo
     c.x = sign(cell.x) * .5 * (outer + AV);
   }
   float hb = mix(9., 40., q.x * q.x);
-  if (q.y > .86) hb = mix(70., 125., q.z);              // megatowers
+  if (q.y > gMega + step(2.5, ax) * .03) hb = mix(70., 125., q.z);   // megatowers
   if (ax < 1.5) hb = max(hb, mix(18., 34., r.z));       // canyon walls
   h = hb * gHS;
   h2 = 0.; hs2 = hs;
@@ -58,6 +69,10 @@ vec2 iBox(vec3 ro, vec3 ird, vec3 b0, vec3 b1) {
   vec3 t1 = (b0 - ro) * ird, t2 = (b1 - ro) * ird;
   vec3 mn = min(t1, t2), mx = max(t1, t2);
   return vec2(max(max(mn.x, mn.y), mn.z), min(min(mx.x, mx.y), mx.z));
+}
+vec3 boxN(vec3 p, vec3 b0, vec3 b1) {
+  vec3 qq = (p - .5 * (b0 + b1)) / (.5 * (b1 - b0)), aq = abs(qq);
+  return aq.x > aq.y && aq.x > aq.z ? vec3(sign(qq.x), 0., 0.) : (aq.y > aq.z ? vec3(0., sign(qq.y), 0.) : vec3(0., 0., sign(qq.z)));
 }
 
 // anti-aliased line of half-width w at distance d, given pixel footprint fp
@@ -71,12 +86,185 @@ vec3 neonCol(float h) {
   vec3 c = h < .4 ? cD : (h < .75 ? cB : cC * 1.6);
   return c;
 }
+vec3 warmCol() { return mix(cD, vec3(1., .78, .55), .55); }
+vec3 coolCol() { return mix(cC / max(max(cC.r, cC.g), max(cC.b, .01)) * .9, vec3(.85, .92, 1.), .4); }
 
 vec3 skyCol(vec3 rd) {
   float y = rd.y;
   float hor = exp(-max(y, 0.) * 5.);
   vec3 c = cA * .5 + mix(nB * .05, nC * .22, hor) + nD * .05 * exp(-abs(y) * 9.);
   return c;
+}
+
+// ---- facade windows -------------------------------------------------------------
+// fuv = (along the face, height) in world units, bid = building hash, fp = pixel footprint.
+// Three facade types: office ribbon glazing, punched residential grid with pilasters,
+// dark glass curtain wall. Returns window emission; glassM = glass coverage, litM = lit coverage.
+vec3 facade(vec2 fuv, vec3 bid, float fp, out float glassM, out float litM) {
+  float ft = floor(bid.x * 2.999);
+  float r1 = fract(bid.y * 3.1), r2 = fract(bid.z * 5.1), r3 = fract(bid.x * 7.7);
+  float fh = mix(.42, .6, bid.y);
+  float cw = ft < .5 ? mix(.3, .42, r1) : (ft < 1.5 ? mix(.34, .52, r1) : mix(.7, 1., r1));
+  vec2 wsz = vec2(cw, fh);
+  vec2 wp = fuv / wsz;
+  vec2 wc = floor(wp), wf = fract(wp) - .5;
+  vec2 fw = vec2(fp) / wsz;
+  float lod = smoothstep(.22, .8, max(fw.x, fw.y));
+  float wh = hash12(wc + bid.xy * 91.7);
+  vec3 warm = warmCol(), cool = coolCol();
+  vec2 ext; float litP, on, wb, solid = 0., mw, avW; vec3 wcol, avC;
+  float calm = mix(.65, 1., gI);
+  if (ft < .5) {            // office ribbons: continuous glazing per floor, lit in long runs
+    ext = vec2(.5, mix(.27, .36, r2));
+    float runL = floor(mix(4., 14., r3));
+    float seg = hash12(vec2(wc.y, floor(wc.x / runL)) + bid.xy * 31.3);
+    litP = mix(.25, .55, r2) * calm;
+    on = step(1. - litP, seg);
+    wb = .5 + .45 * fract(seg * 7.3);
+    wcol = mix(cool, cB, step(.82, fract(seg * 11.1)));
+    mw = .05; avW = .7; avC = cool;
+  } else if (ft < 1.5) {    // punched grid: individual warm windows, pilasters every P columns
+    ext = vec2(mix(.27, .4, r3), mix(.22, .34, r2));
+    solid = step(mod(wc.x, floor(mix(4., 8., r2))), .5);
+    litP = mix(.3, .6, r1) * calm;
+    float runL = mix(2., 6., r3);
+    float blk = hash12(vec2(wc.y, floor(wc.x / runL)) + bid.xy * 31.3);
+    on = max(step(1. - litP, blk) * step(.15, wh), step(.96, wh));
+    float w3 = fract(wh * 3.7);
+    wb = .22 + 1.5 * w3 * w3 * w3;
+    float wk = fract(wh * 7.3);
+    wcol = wk < .75 ? warm : (wk < .9 ? cool : cB);
+    mw = 0.; avW = .5; avC = warm;
+  } else {                  // dark glass curtain wall: a few lit floors, thin mullion grid
+    ext = vec2(.5, .5);
+    litP = mix(.06, .2, r2) * calm;
+    float fl = hash12(vec2(wc.y, floor(wc.x / 12.)) + bid.xy * 7.7);
+    on = step(1. - litP, fl);
+    wb = .3 + .3 * fract(fl * 9.1);
+    wcol = mix(cool, cB, .4);
+    mw = .025; avW = .45; avC = wcol;
+  }
+  // mechanical floors every M floors (no windows) break the regular grid
+  solid = max(solid, step(mod(wc.y, floor(mix(10., 24., fract(bid.z * 13.7)))), .5) * step(ft, 1.5));
+  float sxm = clamp((ext.x - abs(wf.x)) / fw.x + .5, 0., 1.);
+  float sym = clamp((ext.y - abs(wf.y)) / fw.y + .5, 0., 1.);
+  float open = sxm * sym * (1. - solid);
+  float mull = mw > 0. ? lineAA(.5 - abs(wf.x), mw, fw.x) : 0.;
+  // interior: brighter toward the ceiling; blinds / half-drawn curtains close up
+  float vy = wf.y / ext.y * .5 + .5;
+  float inner = .55 + .6 * vy;
+  if (ft < .5) inner = (.45 + .35 * smoothstep(.2, .7, vy) + 1.2 * (1. - lod) * lineAA(abs(vy - .86), .035, fw.y / ext.y * .5)) * (1. - .45 * step(vy, .3) * (1. - lod));
+  float bl = fract(wh * 13.3), det = (1. - lod) * (1. - smoothstep(.15, .4, fw.y * 7.));
+  inner *= mix(1., .5 + .5 * step(.45, fract(vy * 7.)), step(.72, bl) * det);
+  inner *= mix(1., smoothstep(-.15, .15, wf.x * sign(bl - .06)), step(bl, .12) * (1. - lod));
+  // hat flicker subset
+  wb *= fract(wh * 29.3) < .1 ? (.12 + 2.8 * aHat) : 1.;
+  float area = 4. * ext.x * ext.y * (ft > .5 && ft < 1.5 ? .84 : .95);
+  // far away: average radiance, modulated by lit/dark zones of whole floors so facades keep structure
+  float zone = lod > 0. ? .45 + 1.1 * hash12(floor(wc / vec2(16., 3.)) + bid.yz * 13.1) : 1.;
+  float win = mix(open * on * wb * inner * (1. - mull), litP * area * avW * .24 * zone, lod);
+  glassM = mix(open * (1. - mull), area, lod);
+  litM = mix(open * on, litP * area, lod);
+  return mix(mix(wcol, avC, lod), vec3(1.), .1) * win;
+}
+
+// ---- skybridges spanning the avenue ---------------------------------------------
+float bridgeBox(float kk, out vec3 b0, out vec3 b1, out vec3 bh) {   // returns presence
+  bh = hash33(vec3(kk, 3.3, 1.9));
+  float zb = kk * SPB + 3. + bh.y * 14.;
+  float y0 = mix(17.5, 29., bh.z * bh.z) * gHS;
+  b0 = vec3(-AV - .5, y0, zb);
+  b1 = vec3(AV + .5, y0 + mix(1.3, 2.6, fract(bh.x * 7.1)), zb + mix(2., 4.2, fract(bh.y * 5.3)));
+  return step(.15, bh.x);
+}
+
+// nearest skybridge hit along a ray: only the bridge slots whose z-range overlaps the part of
+// the ray inside the bridge height band / avenue width are tested
+void bridgeScan(vec3 ro, vec3 rd, vec3 ird, float zH, float tMax, inout float tBest, inout float kBest) {
+  float ty0 = (17.5 * gHS - ro.y) * ird.y, ty1 = (31.6 * gHS - ro.y) * ird.y;
+  float tx0 = (-AV - .5 - ro.x) * ird.x, tx1 = (AV + .5 - ro.x) * ird.x;
+  float tA = max(max(min(ty0, ty1), min(tx0, tx1)), 0.);
+  float tB = min(min(max(ty0, ty1), max(tx0, tx1)), tMax);
+  if (tA >= tB || rd.z <= 0.) return;
+  float kS = floor((ro.z + rd.z * tA - 21.2) / SPB), kE = floor((ro.z + rd.z * tB - 3.) / SPB);
+  for (int k = 0; k < 6; k++) {
+    float kk = kS + float(k);
+    if (kk > kE) break;
+    vec3 b0, b1, bh;
+    float pr = bridgeBox(kk, b0, b1, bh);
+    if (pr < .5 || abs(b0.z - zH) < 40. || abs(b0.z - zH + 300.) < 40.) continue;
+    vec2 bi = iBox(ro, ird, b0, b1);
+    if (bi.x < bi.y && bi.x > 0. && bi.x < tBest) { tBest = bi.x; kBest = kk; }
+  }
+}
+
+// coloured light spilling from the blade signs onto the avenue wall at p (wall x = side*AV)
+vec3 signSpill(vec3 p, float side) {
+  vec3 s = vec3(0.);
+  float k0 = floor(p.z / CZ), nb = fract(p.z / CZ) < .5 ? -1. : 1.;
+  for (int j = 0; j < 2; j++) {
+    float kk = k0 + float(j) * nb;
+    vec3 sh = hash33(vec3(kk, side, 5.3));
+    float zk = (kk + .3 + .4 * hash11(kk * 1.7)) * CZ;
+    float y0 = mix(3., 32., sh.y) * gHS, len = mix(5., 14., sh.z);
+    float dy = max(max(y0 - p.y, p.y - y0 - len), 0.);
+    float dz = abs(p.z - zk);
+    float flash = aSnare * step(.5, fract(sh.z * 7. + aBeatCount * .5));
+    s += step(.35, sh.x) * neonCol(sh.y * 2.3 + sh.z) * (1. + 2. * flash) / (dz * dz * .6 + dy * dy * .5 + 1.2);
+  }
+  return s;
+}
+
+vec3 bridgeShade(vec3 p, vec3 n, vec3 b0, vec3 b1, vec3 bh, float fp) {
+  vec3 nc = neonCol(bh.y * 2.7 + bh.z * 1.3);
+  float kick = .5 + 2.6 * gKP * (1. - .5 * step(.5, bh.x * 3. - floor(bh.x * 3.)));
+  vec3 col = cA * .1;
+  float zz = p.z - b0.z, dz = b1.z - b0.z;
+  float dB = p.y - b0.y, dT = b1.y - p.y, hgt = b1.y - b0.y;
+  if (abs(n.z) > .5) {            // front / back: lit corridor window strip + neon edge tubes
+    float wy = abs(dB - hgt * .55);
+    float band = clamp((hgt * .17 - wy) / fp + .5, 0., 1.);
+    float cell = floor(p.x / .9);
+    float seg = hash11(cell + bh.x * 50.);
+    float mull = lineAA((.5 - abs(fract(p.x / .9) - .5)) * .9, .04, fp);
+    vec3 wc = mix(warmCol(), coolCol(), step(.55, bh.z));
+    col += wc * band * (1. - mull) * step(.25, seg) * (.35 + .9 * seg) * (.7 + .6 * (dB / hgt));
+    col += nc * (lineAA(dB, .06, fp) * 4. + lineAA(dT, .045, fp) * 2.5) * kick;
+    col += nc * .22 * exp(-dB * 2.5) * kick;
+  } else if (n.y < -.5) {         // underside: neon tubes across the avenue + chasing lights
+    float d1 = min(abs(zz - dz * .22), abs(zz - dz * .78));
+    float de = min(zz, dz - zz);
+    col += nc * (lineAA(d1, .05, fp) * 3.5 + lineAA(de, .04, fp) * 2.) * kick;
+    col += nc * .25 * (exp(-d1 * 4.) * .6) * kick;
+    float rl = fract(p.x * .18 - iTime * 1.5 + bh.z * 7.);
+    col += mix(nc, vec3(1.), .5) * 2. * lineAA(abs(zz - dz * .5), .07, fp) * smoothstep(.8, 1., rl);
+  } else {                        // top / sides
+    col += nc * 2. * lineAA(min(zz, dz - zz), .05, fp) * kick;
+  }
+  return col;
+}
+
+// ---- reflection of the avenue walls in the wet street (mirror-world estimate) -----
+// sx = which wall, zm/ym = mirrored hit on the wall plane, bw = blur width (roughness)
+vec3 wallRefl(float sx, float zm, float ym, float bw) {
+  vec2 cell = vec2(sx, floor(zm / CZ));
+  vec2 c, hs, hs2; float h, h2, pres;
+  bldg(cell, c, hs, h, hs2, h2, pres);
+  float dz = hs.y - abs(zm - c.y);
+  if (pres < .5 || dz < -bw || ym > h + bw) return vec3(0.);
+  vec3 bid = hash33(vec3(cell, 2.7));
+  float inside = clamp(dz / bw + .5, 0., 1.) * clamp((h - ym) / bw + .5, 0., 1.);
+  float ft = floor(bid.x * 2.999);
+  vec3 wcol = ft < .5 ? coolCol() : (ft < 1.5 ? warmCol() : mix(coolCol(), cB, .4));
+  // lit window columns smear into vertical streaks
+  float colH = hash12(vec2(floor(zm / .45), cell.y + bid.x * 40.));
+  float wins = (.05 + .3 * smoothstep(.6, .97, colH)) * (ft > 1.5 ? .4 : 1.) * smoothstep(.5, 4., ym);
+  vec3 r = wcol * wins * inside * mix(.65, 1.1, gI);
+  float isNeon = step(mix(.7, .5, gI), bid.z);
+  vec3 ncol = neonCol(bid.z * 3.7);
+  float de = abs(dz), dt = abs(h - ym);
+  r += ncol * isNeon * (lineAA(de, .07, bw) * 3. + lineAA(dt, .07, bw) * 2. + .2 * (exp(-de * 2.) + exp(-dt * 2.)) * inside) * (1. + .8 * gKP);
+  return r;
 }
 
 // ---- glowing light-line along z (flying / street traffic) ---------------------
@@ -108,7 +296,6 @@ float glyph(vec2 g, vec2 f, float seed) {   // g = glyph cell id, f = 0..1 insid
   float frame = step(.08, f.x) * step(f.x, .92) * step(.06, f.y) * step(f.y, .94);
   return on * m * frame;
 }
-
 
 // ---- giant hologram bust ("the one who isn't here") ---------------------------
 float sdEll(vec2 p, vec2 r) { float k0 = length(p / r), k1 = length(p / (r * r)); return k0 * (k0 - 1.) / max(k1, 1e-4); }
@@ -153,17 +340,20 @@ vec3 holo(vec2 q, float fpq, float gl, float near) {
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   vec2 uv = (fragCoord - .5 * iResolution) / iResolution.y;
   float I = iIntensity;
+  gI = I;
   nB = cB / max(max(cB.r, cB.g), max(cB.b, .01));
   nC = cC / max(max(cC.r, cC.g), max(cC.b, .01)) * .42;
   nD = cD / max(max(cD.r, cD.g), max(cD.b, .01));
   float mode = iParams.x;
   gHS = mix(1., 1.7, iParams.y);
+  gMega = mix(.84, .93, iParams.x);
   gGap = mix(1., .55, iParams.y);
   gRain = mix(.3, 1., iParams.z);
   gPeak = smoothstep(.78, .95, I);
   float flipB = floor(aBarCount + .5);
   gFlip = gPeak * step(.5, hash11(flipB * 1.31 + iSeed * 17.));
   gGlitch = gPeak * (.35 + .65 * aSnare);
+  gKP = aKick * smoothstep(.15, .7, I);
 
   // ---- camera: travel driven by the kick integral ----
   float spd = mix(.7, 1.6, iParams.w) * mix(.5, 1., I);
@@ -191,9 +381,17 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   float waveAmt = sqrt(aKick) * I;
   float gLight = aSnare * aSnare * smoothstep(.6, 1., I) * step(.5, fract(aBarCount * .5 + .25));
 
-  // ---- DDA through the building grid ----
+  // nearest giant hologram plane ahead (every 300 units)
+  float zH = (floor((ro.z - 40.) / 300.) + 1.) * 300. + 40.;
+
   float tG = rd.y < 0. ? -ro.y / rd.y : 1e5;
-  float tEnd = min(tG, FAR);
+
+  // ---- skybridges (and their mirror images under the wet street) ----
+  float tBr = 1e5, kBr = 0.;
+  bridgeScan(ro, rd, ird, zH, FAR, tBr, kBr);
+
+  // ---- DDA through the building grid ----
+  float tEnd = min(min(tG, FAR), tBr);
   float tHit = tEnd;
   float hitB = 0.;
   vec3 hb0 = vec3(0.), hb1 = vec3(1.);
@@ -232,7 +430,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         top = h2;
       }
       // antenna + blinking aircraft light on the megatowers
-      if (top > 45.) {
+      if (top > 66. * gHS) {
         float ah = top + 6. + 6. * fract(c.x * .37 + c.y * .11);
         vec3 w = vec3(c.x, 0., c.y) - ro;
         float ta2 = dot(w.xz, rd.xz) / dot(rd.xz, rd.xz);
@@ -256,64 +454,49 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     else { tc = tM.y; tM.y += tD.y; cell.y += st.y; }
   }
   if (exhausted > .5) tHit = min(tHit, max(tc, 120.));
+  if (tBr < 1e4 && tBr <= tHit) { hitB = 3.; tHit = tBr; exhausted = 0.; }
 
   vec3 col = vec3(0.);
   vec3 p = ro + rd * tHit;
   float pulse = 1. + .5 * aKick * I;
-
-  if (hitB > 0.) {
+  float gnd = 0., gRefl = 0., gRough = 1.;   // wet-street mirror reflection (avenue only)
+  if (hitB > 2.5) {
+    // ---- skybridge ----
+    vec3 b0, b1, bh;
+    float pr = bridgeBox(kBr, b0, b1, bh);
+    col = skyCol(vec3(rd.x, -rd.y, rd.z)) * .08 + bridgeShade(p, boxN(p, b0, b1), b0, b1, bh, tHit * gPix * 1.5);
+  } else if (hitB > 0.) {
     // ---- building facade ----
+    vec3 n = boxN(p, hb0, hb1);
     vec3 cen = .5 * (hb0 + hb1), he = .5 * (hb1 - hb0);
-    vec3 qq = (p - cen) / he;
-    vec3 aq = abs(qq);
-    vec3 n = aq.x > aq.y && aq.x > aq.z ? vec3(sign(qq.x), 0., 0.) : (aq.y > aq.z ? vec3(0., sign(qq.y), 0.) : vec3(0., 0., sign(qq.z)));
     vec3 bid = hash33(vec3(hCell, 1.7 + hitB));
     float ndv = max(abs(dot(n, rd)), .12);
     float fp = tHit * gPix / ndv;
     vec3 ncol = neonCol(bid.z * 3.7);
-    float isNeon = step(mix(.66, .42, I), bid.z);
+    float isNeon = step(mix(.7, .5, I), bid.z);
     // peak: neon tubes stutter on the claps
-    isNeon *= 1. - step(.55, gGlitch) * step(.6, hash13(vec3(hCell, floor(iTime * 15.))));
+    if (gGlitch > .55) isNeon *= step(hash13(vec3(hCell, floor(iTime * 15.))), .6);
     vec3 refl = skyCol(reflect(rd, n));
-    float fres = pow(1. - ndv, 3.);
+    float fres = (1. - ndv) * (1. - ndv) * (1. - ndv);
     if (abs(n.y) < .5) {
       vec2 fuv = abs(n.x) > .5 ? vec2(p.z, p.y) : vec2(p.x, p.y);
       float u0 = abs(n.x) > .5 ? hb0.z : hb0.x, u1 = abs(n.x) > .5 ? hb1.z : hb1.x;
-      // windows: floors x columns, lit in blocks, a few hot ones
-      float fh = mix(.40, .62, bid.y);
-      float cw = mix(.30, .55, bid.x);
-      vec2 wsz = vec2(cw, fh);
-      vec2 wp = fuv / wsz;
-      vec2 wc = floor(wp), wf = fract(wp) - .5;
-      float wh = hash12(wc + bid.xy * 91.7);
-      float runL = mix(3., 9., fract(bid.x * 9.1));
-      float blk = hash12(vec2(wc.y, floor(wc.x / runL)) + bid.xy * 31.3);
-      float litP = mix(.3, .65, fract(bid.y * 5.3));
-      float lit = step(1. - litP, blk) * step(.12, wh);
-      lit = max(lit, step(.95, wh));
-      vec2 fw = vec2(fp) / wsz;
-      vec2 ext = vec2(mix(.26, .42, bid.x), mix(.2, .36, fract(bid.y * 7.1)));
-      float shape = clamp((ext.x - abs(wf.x)) / fw.x + .5, 0., 1.) * clamp((ext.y - abs(wf.y)) / fw.y + .5, 0., 1.);
-      float lod = smoothstep(.25, .9, max(fw.x, fw.y));
-      float avgB = litP * .78 * 4. * ext.x * ext.y * .45;
-      float wb = .18 + 1.6 * pow(fract(wh * 3.7), 4.);
-      // hat flicker subset
-      float fl2 = fract(wh * 29.3);
-      wb *= fl2 < .1 ? (.1 + 3. * aHat) : 1.;
-      // interior: brighter toward the ceiling, thin mullion on big near windows
-      float inner = (.7 + .45 * (wf.y / ext.y * .5 + .5)) * (1. - (1. - lod) * .6 * lineAA(abs(wf.x), .015, fw.x) * step(fw.x, .08));
-      float win = mix(shape * lit * wb * inner, avgB, lod);
-      float warm = step(.55, fract(bid.x * 3.3 + bid.z));
-      vec3 wcol = warm > .5 ? mix(cD, vec3(1., .8, .6), .45) : mix(cC * 1.5, cB, step(.5, fract(wh * 7.3)));
-      wcol = mix(wcol, vec3(1.), .12);
+      float glassM, litM;
+      vec3 wE = facade(fuv, bid, fp, glassM, litM);
       // kick wave through the city
       float wave = waveAmt * exp(-abs(tHit - gKickWave) * .09) * 2.6;
-      vec3 e = wcol * win * (pulse + wave) * mix(.75, 1.1, I);
-      // dark glass with smeared neon reflections + street uplight
-      float smear = .5 + .5 * sin(fuv.x * .9 + bid.x * 40.) * sin(p.y * .07 + bid.y * 20.);
-      vec3 base = cA * .18 + (refl * .35 + mix(cB, cD, smear) * .06 * smoothstep(.45, .9, smear)) * fres
-                + nC * .06 * exp(-p.y * .08) + nD * .025 * exp(-p.y * .2);
-      col = base * (1. - min(win * 3., 1.) * (1. - lod)) + e;
+      vec3 e = wE * (pulse + wave) * mix(.7, 1.1, I);
+      // matte wall panels vs dark glass with smeared neon reflections; street uplight
+      vec2 sw2 = abs(fract(vec2(fuv.x * .143 + bid.x * 6.4, p.y * .011 + bid.y * 3.2)) - .5) * 4. - 1.;   // cheap triangle waves
+      float smear = .5 + .5 * sw2.x * sw2.y;
+      float up = exp(-p.y * .08), up3 = up * up * up;
+      vec3 wallC = cA * .22 + nC * .07 * up + nD * .03 * up3;
+      vec3 glassC = cA * .05 + (refl * .45 + mix(cB, cD, smear) * .08 * smoothstep(.45, .9, smear)) * (.04 + .96 * fres) * mix(1., .45, mode)
+                  + nC * .03 * up;
+      col = mix(wallC, glassC, glassM) * (1. - min(litM * 1.5, 1.)) + e;
+      // coloured light spill from the blade signs on the avenue walls
+      if (abs(hCell.x) < 1.5 && abs(n.x) > .5 && abs(p.x) < AV + .05 && tHit < 70.)
+        col += signSpill(p, sign(p.x)) * mix(.16, .05, glassM) * (1. - min(litM * 1.5, 1.)) * mix(.6, 1., I);
       // neon edges
       float de = min(fuv.x - u0, u1 - fuv.x);
       float dt = hb1.y - p.y;
@@ -324,8 +507,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
       float bandOn = step(.7, bid.y) * isNeon;
       float bd = abs(fract(p.y / bandSp) - .5) * bandSp;
       float band = bandOn * lineAA(bd, .05, fp) * (1. - gGlitch * step(.5, hash11(floor(p.y / bandSp) + floor(iTime * 8.))));
-      vec3 neon = ncol * (nl * isNeon * 4. + band * 3.) * (1. + .6 * aKick * I);
-      neon += ncol * isNeon * .25 * (exp(-de * 2.5) + exp(-dt * 2.5)) * (1. + aKick * I);
+      float npulse = 1. + 1.1 * gKP;
+      vec3 neon = ncol * (nl * isNeon * 4. + band * 3.) * npulse;
+      neon += ncol * isNeon * .25 * (exp(-de * 2.5) + exp(-dt * 2.5)) * npulse;
       col += neon;
       col += (1. - isNeon) * cB * .15 * (lineAA(de, .05, fp) + lineAA(dt, .05, fp));
     } else {
@@ -333,24 +517,30 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
       vec2 r2 = p.xz - cen.xz;
       vec2 dd = he.xz - abs(r2);
       float de = min(dd.x, dd.y);
-      col = cA * .3 + refl * .1;
-      col += ncol * isNeon * 4. * lineAA(de, .07, fp);
+      col = cA * .18 + refl * .08;
+      col += ncol * isNeon * 4. * lineAA(de, .07, fp) * (1. + gKP);
       col += cB * .2 * (1. - isNeon) * lineAA(de, .05, fp);
+      // parapet glow + rooftop machinery (dim grid) + helipad ring on some tall roofs
+      col += nC * .05 * exp(-de * 1.5);
+      vec2 gq = abs(fract(r2 * .5) - .5);
+      col += cC * .035 * step(.42, max(gq.x, gq.y)) * step(1., de);
+      if (bid.x > .6 && hb1.y > 50. * gHS && min(he.x, he.z) > 2.) {
+        float rr = abs(length(r2) - min(he.x, he.z) * .6);
+        col += ncol * 2.2 * lineAA(rr, .06, fp) * (.7 + .6 * gKP);
+      }
       // corner warning lights
       float cl = length(dd - .3);
       float bl = step(.5, fract(iTime * .9 + bid.x));
       col += vec3(1., .1, .05) * bl * 3. * lineAA(cl, .12, fp);
-      // rooftop machinery glow (dim grid)
-      vec2 gq = abs(fract(r2 * .5) - .5);
-      col += cC * .04 * step(.42, max(gq.x, gq.y)) * step(1., de);
     }
   } else if (exhausted < .5 && tG < FAR && tHit >= tG - .01) {
     // ---- ground: wet asphalt + traffic in the side streets ----
     float fp = tHit * gPix / max(-rd.y, .05);
     vec3 refl = skyCol(reflect(rd, vec3(0., 1., 0.)));
-    col = cA * .15 + refl * .35 * pow(1. + rd.y, 4.);
+    float g1 = (1. + rd.y) * (1. + rd.y); g1 *= g1;
+    col = cA * .12 + refl * .3 * g1;
     // street-light pools
-    col += cC * .05 * (.5 + .5 * sin(p.x * .7) * sin(p.z * .3 + p.x * .2));
+    col += cC * .04 * (.5 + .5 * sin(p.x * .7) * sin(p.z * .3 + p.x * .2));
     if (abs(p.x) > AV) {
       // side streets: traffic stripes along z between the blocks
       float lx = p.x - (floor(p.x / CX) + .5) * CX;   // distance to block boundary
@@ -365,7 +555,25 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
       float car2 = step(.55, hash11(floor(s2) + floor(p.z / CZ) * 7.)) * smoothstep(.0, .1, fract(s2)) * smoothstep(.6, .3, fract(s2));
       col += mix(cD, vec3(1., .9, .8), step(lz, CZ * .5)) * laneZ * car2 * 2.;
     } else {
-      // avenue: lane markings + two lanes of traffic each way (tail lights away, headlights toward us)
+      // ---- avenue: wet mirror asphalt (puddles), lane markings, traffic ----
+      gnd = 1.;
+      float pud = smoothstep(.3, .7, vnoise(p.xz * vec2(.4, .09) + 3.1));
+      gRefl = mix(.3, .75, pud) * mix(.75, 1.1, gRain) * (.25 + .75 * g1 * (1. + rd.y));
+      gRough = mix(.09, .025, pud) * mix(1.3, .7, gRain);
+      col *= 1. - .5 * pud;
+      // reflected avenue walls (mirror world beyond the ground plane)
+      float sw = sign(rd.x);
+      float tw = (sw * AV - ro.x) / rd.x;
+      vec3 rc = vec3(0.);
+      if (tw > tHit) {
+        float ym = -(ro.y + rd.y * tw);
+        float zm = ro.z + rd.z * tw;
+        rc += wallRefl(sw, zm, ym, .06 + (tw - tHit) * gRough);
+      }
+      // reflected vanishing-point glow (the light at the end of the avenue)
+      vec2 vr = vec2(rd.x * 7., (-rd.y - .02) * 2.2);
+      rc += (nB * .55 + nD * .12) * exp(-dot(vr, vr)) * (1. + .7 * gKP) * mix(.7, 1., I);
+      col += rc * gRefl;
       float fpx = tHit * gPix;
       float ax = abs(p.x);
       float lm = lineAA(abs(ax - 1.4), .04, fpx) * smoothstep(.5 - fp * .25, .5, abs(fract(p.z * .25) - .5) * 2.);
@@ -380,6 +588,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
       float car = step(.45, hash11(floor(sc) + lp * 7. + sd * 3.)) * smoothstep(0., .06 + fz, cf) * smoothstep(.5 + fz, .3, cf);
       vec3 lc = sd > 0. ? cD * vec3(1., .5, .5) + vec3(.35, 0., 0.) : mix(vec3(1.), cC, .25);
       col += lc * car * (3. * lineAA(dl, .1, fpx) + .25 * exp(-dl * 2.5));
+      // light trails smeared on the wet road behind/ahead of each car
+      col += lc * car * .5 * pud * exp(-dl * 6.) * smoothstep(.0, .5, cf);
     }
   } else {
     // ---- sky ----
@@ -387,7 +597,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     float tc2 = (160. - ro.y) / max(rd.y, .02);
     vec2 cp = (ro.xz + rd.xz * tc2) * .008 + vec2(0., iTime * .01);
     float cl = .5 * vnoise(cp) + .3 * vnoise(cp * 2.3 + 5.1) + .2 * vnoise(cp * 5.1 + 1.7);
-    col += mix(cD * .12, cB * .08, cl) * smoothstep(.35, .8, cl) * exp(-tc2 * .002);
+    // low smog underlit by the city
+    col += (nD * .06 + nC * .16) * smoothstep(.35, .85, cl) * exp(-tc2 * .0018) + cB * .04 * smoothstep(.5, .9, cl) * exp(-tc2 * .003);
     col += vec3(.7, .75, 1.) * gLight * (.3 + 2.5 * smoothstep(.35, .9, cl));
     // forked bolt in the visible sky slot
     if (gLight > .01) {
@@ -404,58 +615,62 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   // ---- fog (height falloff, teal low / violet high) ----
   float H = 18.;
   float yb = ro.y, ye = ro.y + rd.y * tHit;
-  float od = .006 * tHit + .05 * H * (exp(-yb / H) - exp(-ye / H)) / (rd.y + sign(rd.y + 1e-6) * 1e-3) ;
+  float od = mix(.006, .0036, mode) * tHit + .05 * H * (exp(-yb / H) - exp(-ye / H)) / (rd.y + sign(rd.y + 1e-6) * 1e-3);
   od *= mix(.8, 1.35, gRain);
   float T = exp(-max(od, 0.));
   vec3 fogC = mix(nC * .065, cA * .4 + nB * .02, smoothstep(4., 50., .5 * (yb + ye)));
   fogC += nD * .015;
   float far = smoothstep(40., 200., tHit);
-  vec2 vq = vec2(rd.x * 4.5, (rd.y - .02) * 7.);
-  fogC += far * (nB * .5 * exp(-dot(vq, vq)) + nD * .25 * exp(-dot(vq, vq) * 4.) + nC * .12 * exp(-vq.y * vq.y * 2.));
+  vec2 vq = vec2(rd.x * 5.5, (rd.y - .02) * 9.);
+  float vg = exp(-dot(vq, vq));
+  fogC += far * (nB * .42 * vg * (1. + .7 * gKP) * mix(1., .55, mode) + nD * .25 * vg * vg * vg * vg + nC * mix(.12, .06, mode) * exp(-vq.y * vq.y * 2.));
   fogC += vec3(.5, .55, .8) * gLight * .4 * (.3 + .7 * far) * smoothstep(5., 40., ye);
   col = col * T + fogC * (1. - T);
 
-
   // ---- giant hologram bust floating in the avenue (every 300 units, we fly through it) ----
-  {
-    float SP = 300.;
-    float zH = (floor((ro.z - 40.) / SP) + 1.) * SP + 40.;
+  if (rd.z > 0.) {
     float tH = (zH - ro.z) / rd.z;
-    if (rd.z > 0. && tH > 1. && tH < tHit) {
+    float mir = step(tHit, tH) * gnd;           // seen in the wet street
+    if (tH > 1. && (tH < tHit || mir > .5)) {
       vec3 hp = ro + rd * tH;
       float S = 9.5 * mix(1., 1.25, iParams.y);
-      vec2 q = vec2(hp.x / S, (hp.y - 3.) / S);
+      vec2 q = vec2(hp.x / S, (abs(hp.y) - 3.) / S);
       if (abs(q.x) < .8 && q.y > 0. && q.y < 1.7) {
-        float fpq = tH * gPix / S / max(rd.z, .3);
+        float fpq = tH * gPix / S / max(rd.z, .3) + mir * (tH - tHit) * gRough / S;
         float gl = gGlitch + aSnare * .6 + smoothstep(14., 2., tH);
         vec3 he = holo(q, fpq, gl, smoothstep(35., 8., tH));
         float flick = .85 + .15 * hash11(floor(iTime * 24.));
-        float fadeD = smoothstep(SP - 20., SP - 120., tH) * smoothstep(1.5, 10., tH);
-        col += he * flick * fadeD * (1. + .6 * aKick * I) * exp(-tH * .004) * mix(.6, 1.2, I);
+        float fadeD = smoothstep(280., 180., tH) * smoothstep(1.5, 10., tH);
+        col += he * flick * fadeD * (1. + .6 * aKick * I) * exp(-tH * .004) * mix(.6, 1.2, I) * mix(1., gRefl * 1.3, mir);
       }
     }
   }
 
   // ---- emissive extras along the avenue ----
-  // vertical blade signs sticking out of the avenue walls (planes z = const)
-  if (rd.z > 0.) {
-    float k0 = floor(ro.z / CZ);
+  // vertical blade signs sticking out of the avenue walls (planes z = const); mirrored in the street
+  float sgS = sign(rd.x);
+  float tsA = max((sgS * (AV - 1.65) - ro.x) * ird.x, .2);
+  float tsB = min(min((sgS * (AV - .25) - ro.x) * ird.x, gnd > .5 ? tHit + 55. : tHit), 90. / max(rd.z, .01));
+  if (rd.z > 0. && tsA < tsB) {
+    float k0 = floor((ro.z + rd.z * tsA) / CZ - .7), kE = floor((ro.z + rd.z * tsB) / CZ - .3);
     for (int k = 0; k < 11; k++) {
       float kk = k0 + float(k);
+      if (kk > kE) break;
       float zk = (kk + .3 + .4 * hash11(kk * 1.7)) * CZ;
       float tk = (zk - ro.z) / rd.z;
-      if (tk > tHit) break;
-      if (tk < .2) continue;
+      if (tk < tsA || tk > tsB) continue;
       vec2 sp = ro.xy + rd.xy * tk;
+      float ax = abs(sp.x);
+      float x0 = AV - .25, x1 = AV - 1.65;
+      if (ax > x0 || ax < x1) continue;
+      float mir = step(tHit, tk);
+      sp.y = abs(sp.y);
       float side = sign(sp.x);
       vec3 sh = hash33(vec3(kk, side, 5.3));
-      if (sh.x < .35) continue;
-      float x0 = AV - .25, x1 = AV - 1.65;
       float y0 = mix(3., 32., sh.y) * gHS, len = mix(5., 14., sh.z);
-      float ax = abs(sp.x);
-      if (ax > x0 || ax < x1 || sp.y < y0 || sp.y > y0 + len) continue;
+      if (sh.x < .35 || sp.y < y0 || sp.y > y0 + len) continue;
       vec2 su = vec2((x0 - ax) / (x0 - x1), (sp.y - y0) / 1.5);
-      float fpS = tk * gPix / max(abs(rd.z), .2) / 1.4;
+      float fpS = tk * gPix / max(abs(rd.z), .2) / 1.4 + mir * (tk - tHit) * gRough;
       vec2 g = vec2(0., floor(su.y));
       float gl = glyph(g + kk * 3., vec2(su.x, fract(su.y)), sh.x * 50. + floor(iTime * .5 + sh.y * 4.));
       gl = mix(gl, .35, smoothstep(.15, .5, fpS * 4.));
@@ -465,16 +680,18 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
       float flash = aSnare * step(.5, fract(sh.z * 7. + aBeatCount * .5));
       vec3 e = sc * (gl * 2.2 + frame * 3. + .12) * (1. + flash * 3.);
       e *= .85 + .15 * sin(sp.y * 40. + iTime * 10.);           // holo scanlines
-      col += e * exp(-tk * .009) * smoothstep(90., 72., zk - ro.z);
+      col += e * exp(-tk * .009) * smoothstep(90., 72., zk - ro.z) * mix(1., gRefl, mir);
     }
   }
 
-  // flat holo screens on the avenue walls (planes x = +-AV)
+  // flat holo screens on the avenue walls (planes x = +-AV); mirrored in the street
   {
     float s = sign(rd.x);
     float tk = (s * (AV - .08) - ro.x) / rd.x;
+    float mir = 0.;
     if (tk > .2 && tk < tHit + .5) {
       vec3 sp = ro + rd * tk;
+      sp.y = abs(sp.y);
       float kz = floor(sp.z / CZ);
       vec3 sh = hash33(vec3(kz, s, 9.1));
       if (sh.x > .45) {
@@ -482,7 +699,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float y0 = mix(4., 26., sh.z) * gHS, hh = hw * mix(.5, .9, sh.x);
         vec2 su = vec2((sp.z - zc) / hw, (sp.y - y0) / hh);
         if (abs(su.x) < 1. && su.y > 0. && su.y < 1.) {
-          float fpS = tk * gPix / max(abs(rd.x), .1);
+          float fpS = tk * gPix / max(abs(rd.x), .1) + mir * (tk - tHit) * gRough * 3.;
           float typ = floor(sh.y * 3.);
           vec3 c1 = neonCol(sh.z * 3.1), c2 = neonCol(sh.z * 3.1 + .45);
           vec3 e;
@@ -509,7 +726,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
           // bright frame
           vec2 fe = (1. - abs(vec2(su.x, su.y * 2. - 1.))) * vec2(hw, hh * .5);
           e += c1 * 2.5 * lineAA(min(fe.x, fe.y), .05, fpS);
-          col += e * exp(-tk * .009);
+          col += e * exp(-tk * .009) * mix(1., gRefl, mir);
         }
       }
     }
@@ -547,7 +764,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float W = max(wdt, fpL);
         vec3 lc = sd < 0. ? cB : mix(cB, cC * 1.5, .5);
         float on = .25 + .75 * smoothstep(.3, .7, I);
-        glow += lc * on * fadeB * (wdt / W) * (1.4 * exp(-dist * dist / (W * W)) + .05 / (1. + dist * dist * .5)) * exp(-sc * .006) * exp(-tc * .004) * (1. + aKick * I);
+        glow += lc * on * fadeB * (wdt / W) * (1.4 * exp(-dist * dist / (W * W)) + .05 / (1. + dist * dist * .5)) * exp(-sc * .006 - tc * .004) * (1. + aKick * I);
       }
     }
   }
