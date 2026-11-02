@@ -142,8 +142,11 @@
     setU(pr, 'iProgress', (t - rs) / Math.max(1e-3, shot.end - rs));
     setU(pr, 'iFrame', f);
     setU(pr, 'iSeed', shot.seed || 0);
-    setU(pr, 'iParams', shot.params || [0, 0, 0, 0]);
-    setU(pr, 'iIntensity', shot.intensity != null ? shot.intensity : 0.5);
+    const prog = (t - rs) / Math.max(1e-3, shot.end - rs);
+    const prm = typeof shot.params === 'function' ? shot.params(t, prog, au) : shot.params;
+    const inten = typeof shot.intensity === 'function' ? shot.intensity(t, prog, au) : shot.intensity;
+    setU(pr, 'iParams', prm || [0, 0, 0, 0]);
+    setU(pr, 'iIntensity', inten != null ? inten : 0.5);
     const P = shot.pal || DEFAULT_PAL;
     setU(pr, 'cA', P[0]); setU(pr, 'cB', P[1]); setU(pr, 'cC', P[2]); setU(pr, 'cD', P[3]);
     for (const k of AUDIO_KEYS) setU(pr, k, au[k]);
@@ -322,15 +325,23 @@
   }
 
   // Use the full timeline (window.MV_TIMELINE built from timeline.js)
-  async function useTimeline(builder) {
+  async function useTimeline(builder, opt) {
+    opt = opt || {};
     TL = builder(A, window.MVText || {});
     TL.shots.forEach((s, i) => {
       s.id = s.id || 'shot' + i;
       s.renderStart = s.start - ((s.transIn && s.transIn.dur) || 0);
     });
     const names = [...new Set(TL.shots.map((s) => s.scene))];
-    for (const n of names) await loadScene(n);
-    return { shots: TL.shots.length, scenes: names };
+    const missing = [];
+    for (const n of names) {
+      try { await loadScene(n); }
+      catch (e) {
+        if (!opt.fallback || !/fetch/.test(String(e.message))) throw e;
+        missing.push(n); await loadScene(opt.fallback); sceneSrc[n] = sceneSrc[opt.fallback]; delete progs[n]; sceneProgram(n);
+      }
+    }
+    return { shots: TL.shots.length, scenes: names, missing };
   }
 
   // Preview a single scene as one shot (for scene development)

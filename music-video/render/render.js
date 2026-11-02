@@ -25,7 +25,8 @@ function ffmpegWriter(file, W, H, crf) {
   const W = +(a.w || 1280), H = +(a.h || 720);
   const { browser, page, info, server, origin } = await launch({ W, H });
   const FPS = info.fps;
-  const tl = await page.evaluate(() => window.MV.useTimeline(window.MV_TIMELINE));
+  const tl = await page.evaluate((fb) => window.MV.useTimeline(window.MV_TIMELINE, { fallback: fb }), a.fallback || null);
+  if (tl.missing && tl.missing.length) console.log('MISSING scenes (using fallback):', tl.missing.join(', '));
   console.log(`engine ${info.W}x${info.H}, ${tl.shots} shots, scenes: ${tl.scenes.join(', ')}`);
 
   if (a.frames) {           // stills mode

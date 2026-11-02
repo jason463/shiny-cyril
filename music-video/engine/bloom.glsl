@@ -13,6 +13,6 @@ void main() {
   bl += max(textureLod(uComp, uv, 5.).rgb - uBloomThr * .7, 0.) * .26;
   bl += max(textureLod(uComp, uv, 6.).rgb - uBloomThr * .6, 0.) * .24;
   float tg = 0.;
-  if (uTextOn > .5) tg = textureLod(uText, uv, 3.).a * .5 + textureLod(uText, uv, 5.).a * .9 + textureLod(uText, uv, 7.).a * 1.2;
+  if (uTextOn > .5) tg = textureLod(uText, uv, 3.).a * .35 + textureLod(uText, uv, 5.).a * .5 + textureLod(uText, uv, 7.).a * .55;
   o = vec4(bl, tg);
 }

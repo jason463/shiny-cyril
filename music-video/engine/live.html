@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>U Weren't Here — Live Visuals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  @font-face { font-family: "MV Blackletter"; src: url(../assets/fonts/UnifrakturCook-Bold.ttf); }
+  :root { --fg: #e8e4ff; --dim: #8a84b8; --bg: #000; --accent: #6f74ff; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: "JetBrains Mono", monospace; overflow: hidden; }
+  #wrap { position: fixed; inset: 0; display: grid; place-items: center; }
+  canvas { width: 100vw; height: calc(100vw * 9 / 16); max-height: 100vh; max-width: calc(100vh * 16 / 9); background: #000; }
+  #ui { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at center, #120a2acc, #000e); transition: opacity .4s; }
+  #ui.hidden { opacity: 0; pointer-events: none; }
+  .card { text-align: center; padding: 24px; max-width: 520px; }
+  h1 { font-family: "MV Blackletter", serif; font-weight: 400; font-size: clamp(36px, 8vw, 64px); margin: 0 0 4px; letter-spacing: 1px; }
+  h2 { font-family: Inter, sans-serif; font-weight: 900; letter-spacing: .3em; font-size: clamp(14px, 3vw, 20px); margin: 0 0 24px; }
+  p { color: var(--dim); font-size: 13px; line-height: 1.6; }
+  label.btn, button { display: inline-block; margin: 6px; padding: 12px 20px; border: 1px solid var(--accent); color: var(--fg); background: #0000;
+    font: 700 13px "JetBrains Mono", monospace; letter-spacing: .15em; cursor: pointer; border-radius: 2px; }
+  label.btn:hover, button:hover { background: #6f74ff33; }
+  input[type=file] { display: none; }
+  #status { min-height: 1.4em; color: var(--fg); }
+  #hud { position: fixed; left: 12px; bottom: 10px; font-size: 11px; color: #fff8; text-shadow: 0 0 4px #000; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ui"><div class="card">
+  <h1>Cult Member</h1>
+  <h2>U WEREN'T HERE</h2>
+  <p>Real-time version of the music video. Choose the song file (the Afterglow Remix mp3) to start.<br>
+     Space = play/pause · ←/→ = seek 5 s · F = fullscreen · H = hide HUD</p>
+  <label class="btn">CHOOSE MP3<input id="file" type="file" accept="audio/*"></label>
+  <p id="status"></p>
+</div></div>
+<div id="hud"></div>
+<audio id="audio" preload="auto"></audio>
+<script src="palettes.js"></script>
+<script src="engine.js"></script>
+<script src="text.js"></script>
+<script src="../timeline.js"></script>
+<script>
+(async () => {
+  const status = document.getElementById('status'), ui = document.getElementById('ui'), hud = document.getElementById('hud');
+  const audio = document.getElementById('audio');
+  const q = new URLSearchParams(location.search);
+  const W = +(q.get('w') || 1280), H = +(q.get('h') || 720);
+  window.MVText && (window.MVText.FONTS.display = '"Inter Display", Inter, sans-serif');
+  let ready = false, lastF = -1, showHud = true, fpsT = performance.now(), fpsN = 0, fps = 0;
+  try {
+    status.textContent = 'loading shaders…';
+    const info = await MV.init({ W, H, base: '..' });
+    const tl = await MV.useTimeline(window.MV_TIMELINE);
+    status.textContent = `ready · ${tl.shots} shots · ${tl.scenes.length} scenes · ${info.renderer}`;
+    ready = true;
+  } catch (e) { status.textContent = 'error: ' + e.message; console.error(e); return; }
+
+  function start(src) {
+    audio.src = src;
+    audio.play().then(() => ui.classList.add('hidden')).catch((e) => { status.textContent = 'press play: ' + e.message; });
+  }
+  document.getElementById('file').addEventListener('change', (ev) => { const f = ev.target.files[0]; if (f) start(URL.createObjectURL(f)); });
+  if (q.get('audio')) { status.textContent += ' · click anywhere to start'; ui.addEventListener('click', () => start(q.get('audio')), { once: true }); }
+
+  addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { audio.paused ? audio.play() : audio.pause(); e.preventDefault(); }
+    if (e.code === 'ArrowRight') audio.currentTime += 5;
+    if (e.code === 'ArrowLeft') audio.currentTime = Math.max(0, audio.currentTime - 5);
+    if (e.code === 'KeyF') (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
+    if (e.code === 'KeyH') { showHud = !showHud; hud.style.display = showHud ? '' : 'none'; }
+  });
+  audio.addEventListener('ended', () => ui.classList.remove('hidden'));
+
+  function loop() {
+    requestAnimationFrame(loop);
+    if (!ready || !audio.src) return;
+    const f = Math.floor(audio.currentTime * MV.FPS);
+    if (f !== lastF) { MV.renderFrame(f); lastF = f; fpsN++; }
+    MV.blitToCanvas();
+    const now = performance.now();
+    if (now - fpsT > 1000) { fps = fpsN * 1000 / (now - fpsT); fpsN = 0; fpsT = now; }
+    if (showHud) hud.textContent = `${audio.currentTime.toFixed(1)}s · ${fps.toFixed(0)} fps (30 = full rate)`;
+  }
+  loop();
+})();
+</script>
+</body>
+</html>
