@@ -22,34 +22,56 @@ vec2 pathXY(float z) {
 
 // pointed (gothic) arch tunnel, negative inside the nave
 float tunnel(vec3 p) {
-  vec2 q = p.xy - pathXY(p.z);
+  vec2 q = p.xy;
   float w = 1.35, h0 = 1.1, c = .9, R = w + c;
   float t = q.y > h0 ? length(vec2(abs(q.x) + c, q.y - h0)) - R : abs(q.x) - w;
   return max(t, -(q.y + 1.15));
 }
 
-// ---- variant 0: KIFS cathedral (Menger-style fold with morphing rotations)
+// ---- variant 0: KIFS cathedral
 float deKIFS(vec3 p) {
   vec4 tr = vec4(1e3);
-  p.z = mod(p.z + 3., 6.) - 3.;
-  p.x = mod(p.x + 3., 6.) - 3.;
-  p /= 3.;
-  float s = 1. / 3.;
-  float a1 = .18 * sin(gMorph * .7), a2 = .12 * sin(gMorph * .53 + 1.);
-  for (int i = 0; i < 6; i++) {
-    p = abs(p);
-    if (p.x < p.y) p.xy = p.yx;
-    if (p.x < p.z) p.xz = p.zx;
-    if (p.y < p.z) p.yz = p.zy;
-    p.xy *= rot(a1);
-    p.yz *= rot(a2);
-    p = p * 3. - vec3(2., 2., 0.);
-    if (p.z > 1.) p.z -= 2.;
-    s *= 3.;
-    tr = min(tr, vec4(abs(p), dot(p, p)));
+  float sub = fract(iParams.x * 3.);
+  vec3 q = p;
+  if (sub < .5) {
+    // menger-style KIFS hall, tall nave
+    q.y *= .6;
+    q.z = mod(q.z + 3., 6.) - 3.;
+    q.x = mod(q.x + 3., 6.) - 3.;
+    q.y = mod(q.y + 3., 6.) - 3.;
+    q /= 3.;
+    float s = 1. / 3.;
+    float a1 = .25 * sin(gMorph * .7), a2 = .18 * sin(gMorph * .53 + 1.);
+    for (int i = 0; i < 5; i++) {
+      q = abs(q);
+      if (q.x < q.y) q.xy = q.yx;
+      if (q.x < q.z) q.xz = q.zx;
+      if (q.y < q.z) q.yz = q.zy;
+      if (i > 0) { q.xy *= rot(a1); q.yz *= rot(a2); }
+      q = q * 3. - vec3(2., 2., 0.);
+      if (q.z > 1.) q.z -= 2.;
+      s *= 3.;
+      tr = min(tr, vec4(abs(q), dot(q, q)));
+    }
+    gTrap = tr;
+    return .6 * sdBox(q, vec3(1.)) / s;
+  }
+  // generic KIFS
+  q.z = mod(q.z + 2., 4.) - 2.;
+  q.x = abs(q.x);
+  float s = 1.;
+  float a1 = .35 + .2 * sin(gMorph * .7), a2 = .25 + .15 * sin(gMorph * .53 + 1.);
+  vec3 off = vec3(2.6, 2.2, 1.4);
+  for (int i = 0; i < 7; i++) {
+    q = abs(q);
+    q.xy *= rot(a1);
+    q.xz *= rot(a2);
+    q = q * 1.65 - off * .65;
+    s *= 1.65;
+    tr = min(tr, vec4(abs(q), dot(q, q)));
   }
   gTrap = tr;
-  return sdBox(p, vec3(1.)) / s;
+  return sdBox(q, vec3(1.2, 2.5, .5)) / s;
 }
 
 // ---- variant 1: Mandelbox halls
@@ -60,7 +82,7 @@ float deBox(vec3 p) {
   vec3 o = p;
   float S = -1.6 + .25 * sin(gMorph * .6);
   float dr = 1.;
-  for (int i = 0; i < 9; i++) {
+  for (int i = 0; i < 8; i++) {
     p = clamp(p, -1., 1.) * 2. - p;
     float r2 = dot(p, p);
     float k = clamp(1. / r2, 1., 4.);
@@ -80,7 +102,7 @@ float deApo(vec3 p) {
   p /= W;
   float sc = 1.;
   float s = 1.25 + .08 * sin(gMorph * .5);
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 7; i++) {
     p = -1. + 2. * fract(.5 * p + .5);
     float r2 = dot(p, p);
     tr = min(tr, vec4(abs(p), r2));
@@ -93,10 +115,11 @@ float deApo(vec3 p) {
 
 float map(vec3 p) {
   float d;
-  if (gVar == 0) d = deKIFS(p);
-  else if (gVar == 1) d = deBox(p);
-  else d = deApo(p);
-  return max(d, -tunnel(p));
+  vec3 q = p; q.xy -= pathXY(p.z);
+  if (gVar == 0) return deKIFS(q);
+  if (gVar == 1) d = deBox(q);
+  else d = deApo(q);
+  return max(d, -tunnel(q));
 }
 
 vec3 calcNormal(vec3 p, float e) {
@@ -125,14 +148,14 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   float glow = 0.;
   bool hit = false;
   int steps = 0;
-  for (int i = 0; i < 80; i++) {
+  for (int i = 0; i < 72; i++) {
     vec3 p = ro + rd * t;
     d = map(p);
     glow += exp(-d * 40.) * .03;
-    if (d < .0008 * t) { hit = true; break; }
+    if (d < .0015 * t) { hit = true; break; }
     t += d * .9;
     steps = i;
-    if (t > 60.) break;
+    if (t > 30.) break;
   }
 
   vec3 col = vec3(0.);
