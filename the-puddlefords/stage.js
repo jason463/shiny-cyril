@@ -95,6 +95,7 @@
     if (name === 'frij') return { x: p.x, y: p.y - 420, r: 270 };
     if (name === 'cat') return { x: p.x, y: p.y - 95 * (p.s || 1), r: 190 };
     if (name === 'toaster') return { x: p.x, y: p.y - 60, r: 150 };
+    if (p.r) return { x: p.x, y: p.y, r: p.r }; // a free-standing camera target
     const s = p.s || PF.SIZE[name] || 1;
     return { x: p.x, y: (p.y ?? 900) - 335 * s, r: 225 * s };
   };
@@ -187,7 +188,7 @@
   // the dust sheet over the fridge in the cold open (u: 0 on .. 1 flown away)
   PF.sheet = (ctx, t, x, y, u) => {
     if (u >= 1) return;
-    const k = ease.inQuad(u);
+    const k = u; // the caller eases it: fastest in the first frame, so the reveal lands on its sting
     ctx.save();
     ctx.translate(x + k * 520, y - 360 - k * 900); ctx.rotate(k * 1.3); ctx.globalAlpha = 1 - clamp((u - 0.7) / 0.3);
     const sh = u <= 0 ? Math.sin(t * 30) * 2 * clamp((t - (ev.reveal - 0.45)) / 0.4) : 0;

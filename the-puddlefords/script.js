@@ -124,7 +124,7 @@
       L('denise', 'Gary.', { emo: 'angry', cam: 'denise', react: { gary: 'worried' }, gap: 0.5 }),
       L('gary', 'I registered it to the cat.', { emo: 'sad', cam: 'gary', react: { denise: 'shock', mabel: 'shock', otis: 'shock', lou: 'shock' }, gap: 0.2 }),
       P(2.6, 'catlook', 'cat'),
-      P(5.2, 'catwalk', 'wide'),
+      P(5.2, 'catwalk', 'catwalk'),
       P(1.0, 'paw', 'cat+frij'),
       L('frij', 'Welcome back, Mister Biscuit. How may I serve you?', { emo: 'happy', cam: 'frij', react: { gary: 'shock', denise: 'shock', mabel: 'shock', otis: 'happy', lou: 'happy' }, gap: 0.3 }),
       P(3.4, 'open', 'wide'),

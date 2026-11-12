@@ -51,6 +51,7 @@
       behind: () => { const a = pulse(t, ev.reveal, 3); if (t >= ev.reveal && a > 0.02) G.rays(ctx, FRIJ.x, FRIJ.y - 340, { n: 22, r0: 300, r1: 620, color: '#FFD23F', lw: 26, alpha: a }); },
       mid: () => PF.sheet(ctx, t, FRIJ.x, FRIJ.y, ease.outQuad(u)),
     });
+    const fl = pulse(t, ev.reveal, 8); if (t >= ev.reveal && fl > 0.02) { ctx.fillStyle = `rgba(255,255,255,${0.75 * fl})`; ctx.fillRect(0, 0, W, H); }
   };
 
   SC.cheese = (ctx, t, sc) => {
@@ -113,6 +114,7 @@
       else { const u = clamp((t - leap) / 0.84); cat.x = X1 + 40 * Math.sin(u * Math.PI); cat.y = Y - Math.sin(u * Math.PI) * 300; }
     }
     pos.cat = cat;
+    pos.catwalk = { x: cat.x + 60, y: cat.y - 230, r: 330 }; // the camera walks with him
     const cheer = t >= ev.open + 0.15;
     const over = {};
     for (const n of Object.keys(LINEUP)) {
