@@ -1,0 +1,17 @@
+{
+  "name": "the-puddlefords",
+  "private": true,
+  "description": "\"The Puddlefords\", episode 1: a five-minute animated sitcom where every frame, voice and note is made of code.",
+  "scripts": {
+    "voice": "node build-voice.js",
+    "music": "node song.js",
+    "stems": "STEMS=1 node song.js && node engine/tools/levels.js out/music.wav out/stem-*.wav",
+    "board": "node engine/render.js board",
+    "sheet": "node engine/render.js sheet",
+    "video": "node engine/render.js video",
+    "mux": "node engine/render.js mux",
+    "check": "node engine/render.js check",
+    "verify": "node engine/render.js verify",
+    "build": "node build-voice.js && node song.js && node engine/render.js video && node engine/render.js mux && node engine/render.js check && node engine/render.js verify"
+  }
+}
