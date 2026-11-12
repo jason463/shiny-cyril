@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The animated short lives in its own folder with its own (vendored, CommonJS) toolchain.
+    "the-puddlefords/**",
   ]),
 ]);
 
