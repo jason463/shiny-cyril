@@ -1,0 +1,22 @@
+{
+  "name": "inkwake",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Inkwake — draw loops of ink to seal spirits. A brush-stroke roguelike.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && node scripts/artifact.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@fontsource/shippori-mincho-b1": "^5.3.0",
+    "@fontsource/zen-kaku-gothic-new": "^5.3.1",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.6",
+    "vite-plugin-singlefile": "^2.3.4",
+    "vitest": "^3.2.7"
+  }
+}

@@ -1,0 +1,10 @@
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const file = fileURLToPath(new URL('../dist/index.html', import.meta.url));
+const browser = await chromium.launch();
+const page = await browser.newPage();
+await page.goto('file://' + file);
+await page.waitForTimeout(800);
+console.log(JSON.stringify(await page.evaluate(() => window.__inkwake.audioProbe())));
+await browser.close();
