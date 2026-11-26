@@ -81,6 +81,16 @@ const ui = new UI(uiRoot, save, {
   },
 });
 
+/** A short buzz on phones that support it. Silently does nothing elsewhere. */
+function buzz(ms: number | number[]): void {
+  if (!save.settings.haptics || input.device !== 'touch') return;
+  try {
+    navigator.vibrate?.(ms);
+  } catch {
+    // vibration is optional
+  }
+}
+
 function applySettings(): void {
   audio.musicVol = save.settings.music;
   audio.sfxVol = save.settings.sfx;
@@ -160,7 +170,8 @@ function react(ev: GameEvent): void {
     case 'loop':
       if (ev.src === 'brush' && ev.n === 0) audio.emptyLoop();
       else audio.loop(ev.kills, ev.enso);
-      if (ev.kills >= 3) freeze = Math.max(freeze, Math.min(0.1, 0.02 + ev.kills * 0.007));
+      if (ev.kills >= 3) freeze = Math.max(freeze, Math.min(0.055, 0.015 + ev.kills * 0.004));
+      if (ev.src === 'brush') buzz(ev.kills >= 5 ? 22 : ev.kills >= 1 ? 10 : 4);
       if (ev.kills >= 1) deed('first');
       if (ev.n >= 5) deed('five');
       if (ev.n >= 12) deed('twelve');
@@ -182,7 +193,8 @@ function react(ev: GameEvent): void {
       break;
     case 'hurt':
       audio.hurt();
-      freeze = Math.max(freeze, 0.09);
+      freeze = Math.max(freeze, 0.06);
+      buzz([40, 30, 40]);
       break;
     case 'shield':
       audio.charm();
@@ -195,6 +207,7 @@ function react(ev: GameEvent): void {
       break;
     case 'dash':
       audio.dash();
+      buzz(6);
       break;
     case 'cut':
       audio.cut();
@@ -207,6 +220,7 @@ function react(ev: GameEvent): void {
       break;
     case 'levelup':
       audio.levelUp();
+      buzz(16);
       break;
     case 'stage':
       if (ev.index >= 1) deed('margin');
@@ -330,10 +344,25 @@ function stepSim(dt: number, mx: number, my: number, dash: boolean): void {
 }
 
 let last = performance.now();
+let ins = { l: 0, r: 0 };
+let slowFrames = 0;
+
+/** If the device cannot hold its frame rate, trade sharpness for smoothness. One-way, per session. */
+function watchFrameRate(rawMs: number): void {
+  if (mode !== 'play' || renderer.maxDpr <= 1) return;
+  slowFrames = rawMs > 22 ? slowFrames + 1 : Math.max(0, slowFrames - 2);
+  if (slowFrames > 80) {
+    slowFrames = 0;
+    renderer.maxDpr = Math.max(1, renderer.maxDpr - 0.5);
+    resize();
+  }
+}
 
 function frame(now: number): void {
-  const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
+  const raw = now - last;
+  const dt = Math.min(0.05, Math.max(0.001, raw / 1000));
   last = now;
+  if (raw < 250) watchFrameRate(raw);
   ui.tick(dt);
 
   if (mode === 'title') {
@@ -391,7 +420,6 @@ function frame(now: number): void {
   renderer.focus.x += (fx - renderer.focus.x) * Math.min(1, dt * 4);
   renderer.focus.y += (fy - renderer.focus.y) * Math.min(1, dt * 4);
 
-  const ins = ui.insets();
   input.layout(renderer.W, renderer.H, ins.r);
   const hud: Hud = {
     attract: mode === 'title',
@@ -412,6 +440,7 @@ function frame(now: number): void {
 function resize(): void {
   const r = canvas.getBoundingClientRect();
   renderer.resize(r.width, r.height);
+  ins = ui.insets();
 }
 
 window.addEventListener('resize', resize);

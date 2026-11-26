@@ -94,11 +94,17 @@ export class UI {
   private back: (() => void) | null = null;
   private settingsFrom: 'title' | 'pause' = 'title';
   private almanacTab: 'spirits' | 'deeds' = 'spirits';
+  private coarse = false;
 
   constructor(private root: HTMLElement, private save: SaveData, private on: Handlers) {
     this.chrome = h('div');
     root.append(this.chrome, h('div', { id: 'inset-probe' }));
     window.addEventListener('keydown', (e) => this.key(e));
+    try {
+      this.coarse = window.matchMedia('(pointer: coarse)').matches;
+    } catch {
+      this.coarse = false;
+    }
   }
 
   setSave(s: SaveData): void {
@@ -121,8 +127,11 @@ export class UI {
     this.back = back;
     if (el) {
       this.root.append(el);
-      const first = el.querySelector<HTMLElement>('[data-first]') ?? this.focusables()[0];
-      first?.focus({ preventScroll: true });
+      // keyboards and gamepads need a starting focus; a touch screen does not, and would show a stray highlight
+      if (!this.coarse) {
+        const first = el.querySelector<HTMLElement>('[data-first]') ?? this.focusables()[0];
+        first?.focus({ preventScroll: true });
+      }
     }
   }
 
@@ -415,6 +424,7 @@ export class UI {
         slider('set-music', 'Music', 'music'),
         slider('set-sfx', 'Sound', 'sfx'),
         seg('Screen shake', [['Off', 0], ['Soft', 0.5], ['Full', 1]], st.shake, (v) => (st.shake = v)),
+        'vibrate' in navigator ? seg('Vibration', [['Off', 0], ['On', 1]], st.haptics ? 1 : 0, (v) => (st.haptics = v === 1)) : null,
         canFs ? seg('Display', [['Windowed', 0], ['Fullscreen', 1]], document.fullscreenElement ? 1 : 0, (v) => {
           st.fullscreen = v === 1;
           this.on.fullscreen(v === 1);

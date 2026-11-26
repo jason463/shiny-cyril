@@ -50,6 +50,8 @@ export class Renderer {
   shakeScale = 1;
   /** where on screen the camera's centre sits, as a fraction of the view (0.5 = middle) */
   focus = { x: 0.5, y: 0.5 };
+  /** resolution cap; lowered at runtime on devices that cannot hold a steady frame rate */
+  maxDpr = 2;
 
   private paper: CanvasPattern | null = null;
   private paperTile: HTMLCanvasElement;
@@ -70,7 +72,7 @@ export class Renderer {
   private scoreShown = 0;
 
   constructor(readonly canvas: HTMLCanvasElement) {
-    this.ctx = canvas.getContext('2d', { alpha: false })!;
+    this.ctx = canvas.getContext('2d', { alpha: false, desynchronized: true })!;
     this.paperTile = makePaperTile();
     this.decal = document.createElement('canvas');
     this.decal.width = ARENA_W * DS;
@@ -82,10 +84,11 @@ export class Renderer {
   resize(w: number, h: number): void {
     this.W = Math.max(200, w);
     this.H = Math.max(200, h);
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.dpr = Math.min(window.devicePixelRatio || 1, this.maxDpr);
     this.canvas.width = Math.round(this.W * this.dpr);
     this.canvas.height = Math.round(this.H * this.dpr);
-    this.scale = clamp(Math.sqrt((this.W * this.H) / (1180 * 720)), 0.5, 1.5);
+    // never shrink the world below 0.76: on a phone the brush and spirits must stay thumb-sized
+    this.scale = clamp(Math.sqrt((this.W * this.H) / (1180 * 720)), 0.76, 1.5);
     this.paper = this.ctx.createPattern(this.paperTile, 'repeat');
     this.vignette = makeVignette(this.W, this.H);
   }
@@ -1087,7 +1090,7 @@ export class Renderer {
     g.textAlign = 'right';
     g.font = `600 ${compact ? 18 : 22}px ${DISPLAY}`;
     g.fillStyle = C.ink;
-    const scoreRight = right - 46;
+    const scoreRight = right - 56;
     g.fillText(Math.round(this.scoreShown).toLocaleString('en-US'), scoreRight, 27);
     g.font = `500 11px ${BODY}`;
     g.fillStyle = C.inkSoft;

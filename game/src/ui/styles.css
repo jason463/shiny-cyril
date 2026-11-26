@@ -66,6 +66,8 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
 }
 
 #inset-probe {
@@ -103,6 +105,7 @@ input:focus-visible {
   padding-left: var(--gutter-l);
   padding-right: var(--gutter-r);
   overflow-y: auto;
+  overscroll-behavior: contain;
   animation: rise 0.28s ease-out both;
 }
 
@@ -201,8 +204,15 @@ p {
   transition: background 0.12s, color 0.12s, transform 0.12s;
 }
 
-.btn:hover,
-.btn:focus-visible {
+@media (hover: hover) {
+  .btn:hover {
+    background: var(--ink);
+    color: var(--paper-hi);
+  }
+}
+
+.btn:focus-visible,
+.btn:active {
   background: var(--ink);
   color: var(--paper-hi);
 }
@@ -216,8 +226,15 @@ p {
   color: var(--paper-hi);
 }
 
-.btn.primary:hover,
-.btn.primary:focus-visible {
+@media (hover: hover) {
+  .btn.primary:hover {
+    background: var(--red);
+    border-color: var(--red);
+  }
+}
+
+.btn.primary:focus-visible,
+.btn.primary:active {
   background: var(--red);
   border-color: var(--red);
 }
@@ -229,8 +246,17 @@ p {
   color: var(--ink-soft);
 }
 
-.btn.quiet:hover,
-.btn.quiet:focus-visible {
+@media (hover: hover) {
+  .btn.quiet:hover {
+    background: none;
+    color: var(--red-deep);
+    text-decoration: underline;
+    text-underline-offset: 5px;
+  }
+}
+
+.btn.quiet:focus-visible,
+.btn.quiet:active {
   background: none;
   color: var(--red-deep);
   text-decoration: underline;
@@ -330,8 +356,14 @@ p {
   transition: transform 0.18s ease-out;
 }
 
-.menu .item:hover::after,
-.menu .item:focus-visible::after {
+@media (hover: hover) {
+  .menu .item:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+.menu .item:focus-visible::after,
+.menu .item:active::after {
   transform: scaleX(1);
 }
 
@@ -412,8 +444,15 @@ p {
   transition: transform 0.14s ease-out, box-shadow 0.14s ease-out;
 }
 
-button.card:hover,
-button.card:focus-visible {
+@media (hover: hover) {
+  button.card:hover {
+    transform: translate(-2px, -3px);
+    box-shadow: 8px 10px 0 var(--red);
+  }
+}
+
+button.card:focus-visible,
+button.card:active {
   transform: translate(-2px, -3px);
   box-shadow: 8px 10px 0 var(--red);
 }
@@ -728,10 +767,10 @@ input[type='range'] {
 
 .pause-btn {
   position: absolute;
-  top: 12px;
+  top: 10px;
   right: var(--gutter-r);
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
   pointer-events: auto;
   display: grid;
   place-items: center;

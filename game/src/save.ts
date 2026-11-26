@@ -17,7 +17,7 @@ export interface SaveData {
   seen: EnemyKind[];
   achievements: string[];
   tutorialDone: boolean;
-  settings: { music: number; sfx: number; shake: number; fullscreen: boolean };
+  settings: { music: number; sfx: number; shake: number; fullscreen: boolean; haptics: boolean };
 }
 
 const KEY = 'inkwake.save.v1';
@@ -26,7 +26,7 @@ export function defaultSave(): SaveData {
   return {
     v: 1, seals: 0, brushes: ['bamboo'], brush: 'bamboo', depthUnlocked: 1, depth: 1,
     best: 0, runs: 0, wins: 0, totalKills: 0, seen: [], achievements: [], tutorialDone: false,
-    settings: { music: 0.6, sfx: 0.8, shake: 1, fullscreen: false },
+    settings: { music: 0.6, sfx: 0.8, shake: 1, fullscreen: false, haptics: true },
   };
 }
 

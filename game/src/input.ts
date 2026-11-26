@@ -19,6 +19,12 @@ export class Input {
   playing = false;
 
   constructor(el: HTMLElement) {
+    // phones and tablets start in touch mode, so the right hints and the Flick button show at once
+    try {
+      if (window.matchMedia('(pointer: coarse)').matches) this.device = 'touch';
+    } catch {
+      // keep the default
+    }
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
       this.keys.add(e.code);
@@ -34,7 +40,9 @@ export class Input {
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => this.keys.clear());
 
-    window.addEventListener('mousemove', (e) => {
+    // Pointer events carry their type, so the fake mouse events a phone fires after a tap are ignored.
+    window.addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse') return;
       const r = el.getBoundingClientRect();
       const x = e.clientX - r.left, y = e.clientY - r.top;
       if (Math.abs(x - this.mouse.x) + Math.abs(y - this.mouse.y) > 3) this.device = 'mouse';
@@ -42,12 +50,12 @@ export class Input {
       this.mouse.y = y;
       this.mouse.seen = true;
     });
-    el.addEventListener('mousedown', (e) => {
-      if (!this.playing) return;
+    el.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'mouse' || !this.playing) return;
       this.device = 'mouse';
       this.dashQueued = true;
-      e.preventDefault();
     });
+    el.addEventListener('mousedown', (e) => e.preventDefault());
     el.addEventListener('contextmenu', (e) => e.preventDefault());
 
     const opts = { passive: false } as AddEventListenerOptions;
@@ -121,8 +129,8 @@ export class Input {
       const s = this.stick;
       if (!s) return { x: 0, y: 0 };
       const dx = s.x - s.ox, dy = s.y - s.oy, d = Math.hypot(dx, dy);
-      if (d < 7) return { x: 0, y: 0 };
-      const k = Math.min(1, d / 42) / d;
+      if (d < 5) return { x: 0, y: 0 };
+      const k = Math.min(1, d / 38) / d;
       return { x: dx * k, y: dy * k };
     }
     if (this.device === 'keys') {
