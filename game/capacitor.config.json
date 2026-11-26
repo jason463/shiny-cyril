@@ -1,0 +1,9 @@
+{
+  "appId": "com.inkwake.app",
+  "appName": "Inkwake",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#1b1a1d",
+    "allowMixedContent": false
+  }
+}

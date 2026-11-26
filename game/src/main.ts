@@ -28,6 +28,9 @@ let attractT = 0;
 let hint = '';
 let tutorial = { step: 0, moved: 0, t: 0, lx: 0, ly: 0 };
 let runDeeds: AchDef[] = [];
+/** true when running inside the Android or iOS app shell */
+const native = 'Capacitor' in window;
+if (native) document.documentElement.classList.add('native');
 let framed = false;
 try {
   framed = window.self !== window.top;
@@ -316,7 +319,7 @@ function finishRun(won: boolean): void {
   ui.results({
     won, score: t.score, best: best && t.score > 0, kills: t.kills, loops: t.loops, ensos: t.ensos, biggest: t.best,
     time: sim.time, stageName: sim.stages[Math.min(sim.stage, sim.stages.length - 1)].name, earned,
-    newDeeds: runDeeds, newDepth, newScroll, scrollName: sim.scrollDef.name, painting: renderer.painting(), canSave: !framed,
+    newDeeds: runDeeds, newDepth, newScroll, scrollName: sim.scrollDef.name, painting: renderer.painting(), canSave: !framed && !native,
   });
 }
 
@@ -500,6 +503,17 @@ void document.fonts?.load?.('600 20px "Shippori Mincho B1"');
 void document.fonts?.load?.('500 14px "Zen Kaku Gothic New"');
 toTitle();
 requestAnimationFrame(frame);
+
+// The app shell calls this when the phone's Back button is pressed.
+// Returns true when the game dealt with it; false lets the shell send the app to the background.
+(window as unknown as Record<string, unknown>).__inkwakeBack = (): boolean => {
+  if (mode === 'play') {
+    pause();
+    return true;
+  }
+  if (mode === 'choice' || mode === 'ending') return true;
+  return ui.goBack();
+};
 
 // A handle for automated play-testing: lets a script start a run and hand the brush to the bot.
 (window as unknown as Record<string, unknown>).__inkwake = {

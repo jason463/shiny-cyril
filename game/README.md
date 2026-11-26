@@ -81,6 +81,26 @@ Not verified, because it needs a person: whether it is fun, how the difficulty f
 hands, and how the music actually sounds. The balance numbers come from a bot, which dodges
 worse and rings more patiently than a person does.
 
+## Android app
+
+`android/` is a [Capacitor](https://capacitorjs.com) project that hosts the same web build in a
+full-screen WebView. `MainActivity.java` hides the system bars, keeps the screen awake, pads the
+game clear of a camera cutout and routes the Back button to the game (pause, or back one menu).
+
+```bash
+npm run android:sync    # build the web game and copy it into the Android project
+npm run android:apk     # ...then build a debug APK
+```
+
+Building needs a JDK (17 or newer) and the Android SDK (platform 35, build-tools 35.0.0), with
+`ANDROID_HOME` pointing at it. The APK lands in `android/app/build/outputs/apk/debug/`.
+
+The app ID is `com.inkwake.app`, a placeholder: choose the real one before the first store upload,
+because it cannot be changed afterwards. A debug APK can be installed directly on a phone; the
+Play Store needs a release bundle signed with your own key.
+
+`node scripts/icons.mjs` regenerates the launcher icons.
+
 ## Towards a Steam release
 
 Not done yet:

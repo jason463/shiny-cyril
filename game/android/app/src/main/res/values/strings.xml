@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Inkwake</string>
+    <string name="title_activity_main">Inkwake</string>
+    <string name="package_name">com.inkwake.app</string>
+    <string name="custom_url_scheme">com.inkwake.app</string>
+</resources>

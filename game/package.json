@@ -9,9 +9,14 @@
     "build": "tsc --noEmit && vite build && node scripts/artifact.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "android:sync": "npm run build && cap sync android",
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug"
   },
   "devDependencies": {
+    "@capacitor/android": "^7.6.11",
+    "@capacitor/cli": "^7.6.11",
+    "@capacitor/core": "^7.6.11",
     "@fontsource/shippori-mincho-b1": "^5.3.0",
     "@fontsource/zen-kaku-gothic-new": "^5.3.1",
     "typescript": "^5.9.3",
