@@ -29,12 +29,18 @@ web host, from `file://`, or inside a desktop shell.
 
 - **One mechanic, pushed hard.** Wider rings seal more at once and score multiplicatively; rounder
   rings count as a true *ensō* and strike a layer deeper.
-- **Ten spirits** that each pressure the line differently (darters charge, cutters sever your
-  stroke, blooms scatter, shellbacks need two rings, wisps spiral in), plus an elite and a final boss.
-- **Five stages** ending in The Stain. A finished run takes about eight minutes.
-- **12 techniques** (stackable) offered on level-up and **10 relics** (rule-changers) offered
+- **Three scrolls**, each five stages and its own finale, unlocked in order. A finished scroll takes
+  about eight minutes.
+  - **The White Page**: the base game, ending in The Stain.
+  - **The Rain Scroll**: puddles wash your line away. Leeches ride your line to the brush; Bound
+    Twins can only be sealed together. Ends in The Undertow, a serpent you cut down coil by coil.
+  - **The Gale Scroll**: telegraphed gusts slide everything across the page. Kites ride the gusts,
+    Bellows push the brush away, Shades fade out at a distance. Ends in The Other Brush, a rival
+    that draws its own rings around you.
+- **18 spirits** in all, including an elite and the three bosses.
+- **14 techniques** (stackable) offered on level-up and **15 relics** (rule-changers) offered
   between stages.
-- **Four brushes** to unlock, **five depths** of difficulty, 17 deeds, and an almanac of spirits.
+- **Four brushes** to unlock, **five depths** of difficulty, 21 deeds, and an almanac of spirits.
 - **The painting.** The results screen shows the sheet your rings left behind.
 
 ## How it is built
@@ -59,7 +65,8 @@ report (how far the bot gets, what kills it).
 npm test                         # geometry, line rules, and bot-played full runs
 node scripts/shots.mjs desktop 30 90   # bot plays the built game in Chromium; screenshots in .shots/
 node scripts/ui-shots.mjs        # every menu at desktop and phone size
-node scripts/boss.mjs            # jumps to the finale and records the fight
+node scripts/boss.mjs            # jumps to the first finale and records the fight
+node scripts/scrolls.mjs         # captures the later scrolls and their finales
 node scripts/audio.mjs           # renders the audio offline and reports peak / RMS
 ```
 
@@ -67,7 +74,7 @@ The `scripts/*.mjs` play-tests need Playwright with Chromium available on the ma
 
 ## What has and has not been verified
 
-Verified by automated runs: the rules, full runs from first stroke to the boss, every menu at
+Verified by automated runs: the rules, full bot-played runs of all three scrolls to their finales, every menu at
 desktop and phone sizes, touch steering and flick, no console errors, no audio clipping.
 
 Not verified, because it needs a person: whether it is fun, how the difficulty feels in human
@@ -82,4 +89,4 @@ Not done yet:
    Linux builds.
 2. Hook deeds up to Steam achievements and saves to Steam Cloud through the Steamworks SDK.
 3. Clear the name, then prepare store assets (capsule art, screenshots, trailer).
-4. Human play-testing and a balance pass on Depths 2 to 5.
+4. Human play-testing and a balance pass, especially the two later scrolls and Depths 2 to 5.

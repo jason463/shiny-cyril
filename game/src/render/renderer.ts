@@ -1,8 +1,11 @@
 // Draws the page: paper, the accumulated painting, the live line, spirits, effects and HUD.
 // Everything is generated in code; there are no image files.
 
-import { Sim, Enemy, GameEvent, PLAYER_R, KOI_R, B_AIM, B_REEL, B_WIND, B_BURST, B_CHARGE } from '../sim/sim';
-import { ARENA_W, ARENA_H, ENEMIES, NUMERALS, STAGES } from '../sim/data';
+import {
+  Sim, Enemy, GameEvent, PLAYER_R, KOI_R, B_AIM, B_REEL, B_WIND, B_BURST, B_CHARGE,
+  E_AIM, E_OPEN, E_GROW, R_REST, R_BLOT, R_AIM, R_SLASH,
+} from '../sim/sim';
+import { ARENA_W, ARENA_H, ENEMIES, NUMERALS, BOSS_KINDS } from '../sim/data';
 import { Pt, TAU, clamp, Rng } from '../sim/geom';
 
 export const C = {
@@ -16,6 +19,13 @@ export const C = {
   indigo: '#2c3b68',
   gold: '#b0862a',
 };
+
+/** One sheet per scroll: paper tone, its RGB for washes drawn over the scene, and the desk beneath. */
+const THEMES = [
+  { paper: '#e4e1d6', rgb: '228,225,214', desk: '#1b1a1d', fleck: '' },
+  { paper: '#d6dde0', rgb: '214,221,224', desk: '#15181c', fleck: 'rgba(60,90,120,0.10)' },
+  { paper: '#e8dcc1', rgb: '232,220,193', desk: '#1d1915', fleck: 'rgba(176,134,42,0.30)' },
+];
 
 const DISPLAY = '"Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif';
 const BODY = '"Zen Kaku Gothic New", "Hiragino Sans", "Segoe UI", system-ui, sans-serif';
@@ -55,6 +65,8 @@ export class Renderer {
 
   private paper: CanvasPattern | null = null;
   private paperTile: HTMLCanvasElement;
+  private theme = THEMES[0];
+  private themeIdx = 0;
   private decal: HTMLCanvasElement;
   private dctx: CanvasRenderingContext2D;
   private vignette: HTMLCanvasElement | null = null;
@@ -73,7 +85,7 @@ export class Renderer {
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d', { alpha: false, desynchronized: true })!;
-    this.paperTile = makePaperTile();
+    this.paperTile = makePaperTile(THEMES[0].paper, THEMES[0].fleck);
     this.decal = document.createElement('canvas');
     this.decal.width = ARENA_W * DS;
     this.decal.height = ARENA_H * DS;
@@ -91,6 +103,16 @@ export class Renderer {
     this.scale = clamp(Math.sqrt((this.W * this.H) / (1180 * 720)), 0.76, 1.5);
     this.paper = this.ctx.createPattern(this.paperTile, 'repeat');
     this.vignette = makeVignette(this.W, this.H);
+  }
+
+  /** Switch to the paper of scroll `i`. */
+  setTheme(i: number): void {
+    const idx = clamp(i, 0, THEMES.length - 1);
+    if (idx === this.themeIdx) return;
+    this.themeIdx = idx;
+    this.theme = THEMES[idx];
+    this.paperTile = makePaperTile(this.theme.paper, this.theme.fleck);
+    this.paper = this.ctx.createPattern(this.paperTile, 'repeat');
   }
 
   /** Fresh sheet for a new painting. */
@@ -236,10 +258,25 @@ export class Renderer {
         this.rings.push({ x: ev.x, y: ev.y, r0: 40, r1: 520, t: 0, max: 1.1, color: C.ink, w: 8 });
         break;
       case 'stage': {
-        const st = STAGES[ev.index];
+        const st = sim.stages[ev.index];
         if (!sim.attract) this.showBanner(NUMERALS[ev.index] ?? '', st.name, st.sub);
         break;
       }
+      case 'wash':
+        this.text(ev.x, ev.y - 24, 'washed away', 15, C.indigo, 1);
+        this.rings.push({ x: ev.x, y: ev.y, r0: 8, r1: 60, t: 0, max: 0.5, color: C.indigo, w: 2 });
+        break;
+      case 'bound':
+        this.text(ev.x, ev.y - 22, 'bound', 14, C.inkSoft, 0.9);
+        break;
+      case 'eelOpen':
+        this.rings.push({ x: ev.x, y: ev.y, r0: 30, r1: 200, t: 0, max: 0.8, color: C.gold, w: 5 });
+        this.text(ev.x, ev.y - 54, 'exposed', 20, C.gold, 1.6);
+        break;
+      case 'rivalLoop':
+        this.flashes.push({ poly: ev.poly, t: 0, max: 0.7, color: C.redDeep, strong: true });
+        this.stampLoop(ev.poly, 0.34, 6, C.redDeep);
+        break;
       case 'levelup':
         this.rings.push({ x: sim.player.x, y: sim.player.y, r0: 12, r1: 120, t: 0, max: 0.5, color: C.gold, w: 3 });
         break;
@@ -358,7 +395,7 @@ export class Renderer {
     const sy = sh > 0.2 ? (this.fx.next() - 0.5) * sh : 0;
 
     g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    g.fillStyle = C.desk;
+    g.fillStyle = this.theme.desk;
     g.fillRect(0, 0, this.W, this.H);
 
     const s = this.scale;
@@ -389,11 +426,14 @@ export class Renderer {
     g.lineWidth = 1;
     g.strokeRect(33, 33, ARENA_W - 66, ARENA_H - 66);
 
+    this.drawPuddles(g, sim);
     this.drawZones(g, sim);
     this.drawFlashes(g, dt);
     this.drawOrbs(g, sim);
     this.drawTrail(g, sim);
     if (sim.koi.on) this.drawKoi(g, sim, dt);
+    this.drawRivalLine(g, sim);
+    this.drawThreads(g, sim);
     for (const e of sim.enemies) {
       if (e.dead) continue;
       if (e.x < vx0 - 320 || e.x > vx0 + vw + 320 || e.y < vy0 - 320 || e.y > vy0 + vh + 320) continue;
@@ -409,6 +449,7 @@ export class Renderer {
       g.fillStyle = `rgba(44,59,104,${0.07 * Math.min(1, sim.slowT)})`;
       g.fillRect(0, 0, this.W, this.H);
     }
+    this.drawWeather(g, sim, hud.attract);
     if (this.vignette) g.drawImage(this.vignette, 0, 0, this.W, this.H);
     if (this.hurtFlash > 0) {
       this.hurtFlash -= dt * 2.2;
@@ -462,7 +503,7 @@ export class Renderer {
     // dry-brush: broken pale streaks inside the stroke
     if (n > 6) {
       g.save();
-      g.strokeStyle = 'rgba(228,225,214,0.26)';
+      g.strokeStyle = `rgba(${this.theme.rgb},0.26)`;
       g.lineWidth = Math.max(1, w0 * 0.13);
       g.setLineDash([22, 9, 6, 14, 34, 11]);
       g.lineDashOffset = sim.trailOdo;
@@ -588,9 +629,48 @@ export class Renderer {
       }
     }
 
+    if ((e.kind === 'eel' && e.state === E_AIM) || (e.kind === 'rival' && e.state === R_AIM)) {
+      const total = e.kind === 'eel' ? 0.85 : 0.8;
+      const k = 1 - clamp(e.st / total, 0, 1);
+      g.strokeStyle = `rgba(197,52,31,${0.14 + 0.45 * k})`;
+      g.lineWidth = (e.kind === 'eel' ? r * 1.5 : 10) * (0.3 + 0.7 * k);
+      g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(e.x, e.y);
+      g.lineTo(e.x + e.ax * (e.kind === 'eel' ? 330 : 340), e.y + e.ay * (e.kind === 'eel' ? 330 : 340));
+      g.stroke();
+      g.lineCap = 'butt';
+    }
+    if (e.kind === 'bellows') {
+      // its breath, as widening rings
+      for (let i = 0; i < 3; i++) {
+        const k = (t * 0.6 + i / 3 + e.seed) % 1;
+        g.strokeStyle = `rgba(22,22,27,${0.16 * (1 - k)})`;
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(e.x, e.y, r + k * 185, 0, TAU);
+        g.stroke();
+      }
+    }
+    if ((e.kind === 'eel' && e.state === E_OPEN) || (e.kind === 'rival' && e.state === R_REST)) {
+      // "ring me now"
+      g.strokeStyle = C.gold;
+      g.lineWidth = 2.5;
+      g.setLineDash([8, 7]);
+      g.lineDashOffset = -t * 40;
+      g.beginPath();
+      g.arc(e.x, e.y, r + 18 + Math.sin(t * 6) * 3, 0, TAU);
+      g.stroke();
+      g.setLineDash([]);
+    }
+
     g.save();
     g.translate(e.x, e.y);
     g.fillStyle = body;
+    if (e.kind === 'shade') {
+      const d = Math.hypot(sim.player.x - e.x, sim.player.y - e.y);
+      g.globalAlpha = e.flash > 0 ? 1 : clamp(1 - (d - 150) / 90, 0.07, 1);
+    }
 
     switch (e.kind) {
       case 'drifter':
@@ -739,6 +819,172 @@ export class Renderer {
         }
         break;
       }
+      case 'leech': {
+        g.rotate(look);
+        const riding = e.state === 1;
+        g.beginPath();
+        g.ellipse(0, 0, r * 1.55, r * 0.72, 0, 0, TAU);
+        g.fill();
+        g.strokeStyle = C.paperHi;
+        g.lineWidth = 1.4;
+        for (const x of [-0.7, -0.15, 0.4]) {
+          g.beginPath();
+          g.moveTo(r * x, -r * 0.55);
+          g.lineTo(r * x, r * 0.55);
+          g.stroke();
+        }
+        g.fillStyle = riding ? C.red : C.paperHi;
+        g.beginPath();
+        g.arc(r * 1.05, 0, r * (riding ? 0.34 + 0.08 * Math.sin(t * 20) : 0.22), 0, TAU);
+        g.fill();
+        break;
+      }
+      case 'twin': {
+        blob(g, r, e.seed, t, 0.08, 9);
+        g.fill();
+        // one wears a moon, the other a ring, so the pair reads as a pair
+        if (e.order > 0) {
+          g.fillStyle = C.paperHi;
+          g.beginPath();
+          g.arc(0, 0, r * 0.5, 0.6, 0.6 + Math.PI);
+          g.fill();
+        } else {
+          g.strokeStyle = C.paperHi;
+          g.lineWidth = r * 0.2;
+          g.beginPath();
+          g.arc(0, 0, r * 0.45, 0, TAU);
+          g.stroke();
+        }
+        break;
+      }
+      case 'coil': {
+        const k = e.grace > 0 ? 1 - e.grace / 0.7 * 0.5 : 1;
+        g.beginPath();
+        g.arc(0, 0, r * k, 0, TAU);
+        g.fill();
+        g.strokeStyle = e.flash > 0.08 ? C.ink : 'rgba(241,239,231,0.5)';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(0, 0, r * k * 0.55, 0.4 + e.order, 0.4 + e.order + 3.6);
+        g.stroke();
+        break;
+      }
+      case 'eel': {
+        const open = e.state === E_OPEN, grow = e.state === E_GROW;
+        g.rotate(Math.atan2(e.ay, e.ax) + (open ? Math.sin(t * 9) * 0.25 : 0));
+        if (open) g.fillStyle = e.flash > 0.08 ? C.paperHi : '#5a5a66';
+        const s2 = grow ? 0.85 + 0.15 * Math.sin(t * 14) : 1;
+        g.scale(s2, s2);
+        g.beginPath();
+        g.moveTo(r * 1.5, 0);
+        g.quadraticCurveTo(r * 1.1, r * 1.05, -r * 0.3, r * 1.0);
+        g.quadraticCurveTo(-r * 1.3, r * 0.6, -r * 1.2, 0);
+        g.quadraticCurveTo(-r * 1.3, -r * 0.6, -r * 0.3, -r * 1.0);
+        g.quadraticCurveTo(r * 1.1, -r * 1.05, r * 1.5, 0);
+        g.fill();
+        for (const sgn of [-1, 1]) {
+          g.fillStyle = open ? C.gold : C.paperHi;
+          g.beginPath();
+          g.arc(r * 0.45, sgn * r * 0.5, r * 0.22, 0, TAU);
+          g.fill();
+          g.fillStyle = C.ink;
+          g.beginPath();
+          g.arc(r * 0.52, sgn * r * 0.5, r * (open ? 0.05 : 0.11), 0, TAU);
+          g.fill();
+        }
+        // remaining seals
+        g.fillStyle = C.red;
+        for (let i = 0; i < e.hp; i++) {
+          g.beginPath();
+          g.arc(-r * 0.55, (i - (e.hp - 1) / 2) * 7, 2.4, 0, TAU);
+          g.fill();
+        }
+        break;
+      }
+      case 'kite': {
+        g.rotate(Math.atan2(e.vy, e.vx));
+        g.beginPath();
+        g.moveTo(r * 1.5, 0);
+        g.lineTo(0, r * 0.95);
+        g.lineTo(-r * 1.1, 0);
+        g.lineTo(0, -r * 0.95);
+        g.closePath();
+        g.fill();
+        g.strokeStyle = body;
+        g.lineWidth = 1.6;
+        g.beginPath();
+        g.moveTo(-r * 1.1, 0);
+        for (let i = 1; i <= 5; i++) g.lineTo(-r * 1.1 - i * r * 0.6, Math.sin(t * 12 + i * 1.3 + e.seed) * r * 0.5);
+        g.stroke();
+        g.strokeStyle = C.paperHi;
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(r * 1.5, 0);
+        g.lineTo(-r * 1.1, 0);
+        g.moveTo(0, r * 0.95);
+        g.lineTo(0, -r * 0.95);
+        g.stroke();
+        break;
+      }
+      case 'bellows': {
+        const puff = 1 + 0.08 * Math.sin(t * 3.6 + e.seed);
+        g.scale(puff, puff);
+        blob(g, r, e.seed, t * 0.7, 0.05, 11);
+        g.fill();
+        g.strokeStyle = C.paperHi;
+        g.lineWidth = r * 0.13;
+        g.beginPath();
+        g.arc(0, 0, r * 0.5, 0, TAU);
+        g.stroke();
+        g.beginPath();
+        g.arc(0, 0, r * 0.2, 0, TAU);
+        g.stroke();
+        break;
+      }
+      case 'shade': {
+        g.beginPath();
+        g.moveTo(0, -r * 1.25);
+        g.quadraticCurveTo(r * 1.1, -r * 0.9, r * 0.9, r * 0.5);
+        g.quadraticCurveTo(r * 0.5, r * 1.3 + Math.sin(t * 5 + e.seed) * 2, 0, r * 0.8);
+        g.quadraticCurveTo(-r * 0.5, r * 1.3 + Math.cos(t * 5 + e.seed) * 2, -r * 0.9, r * 0.5);
+        g.quadraticCurveTo(-r * 1.1, -r * 0.9, 0, -r * 1.25);
+        g.fill();
+        g.strokeStyle = C.paperHi;
+        g.lineWidth = 1.5;
+        for (const sgn of [-1, 1]) {
+          g.beginPath();
+          g.arc(sgn * r * 0.36, -r * 0.3, r * 0.17, 0, TAU);
+          g.stroke();
+        }
+        break;
+      }
+      case 'rival': {
+        const blot = e.state === R_BLOT, rest = e.state === R_REST;
+        const dir = e.state === R_AIM || e.state === R_SLASH ? Math.atan2(e.ay, e.ax) : Math.atan2(e.vy, e.vx);
+        g.rotate(dir + (rest ? Math.sin(t * 16) * 0.5 : 0));
+        if (blot) {
+          g.globalAlpha = 0.5;
+          g.scale(0.5, 0.5);
+        }
+        const st2 = e.state === R_SLASH ? 1.5 : 1.1;
+        g.scale(st2, 1 / Math.sqrt(st2));
+        g.beginPath();
+        g.moveTo(r * 1.55, 0);
+        g.quadraticCurveTo(r * 0.6, r * 1.05, -r * 0.55, r * 0.92);
+        g.quadraticCurveTo(-r * 1.25, 0, -r * 0.55, -r * 0.92);
+        g.quadraticCurveTo(r * 0.6, -r * 1.05, r * 1.55, 0);
+        g.closePath();
+        g.fillStyle = e.flash > 0.08 ? C.paperHi : C.ink;
+        g.fill();
+        g.lineWidth = 2;
+        g.strokeStyle = C.red;
+        g.stroke();
+        g.fillStyle = C.red;
+        g.beginPath();
+        g.arc(r * 0.3, 0, r * 0.26, 0, TAU);
+        g.fill();
+        break;
+      }
       case 'boss': {
         const reel = e.state === B_REEL;
         const k = reel ? 0.35 + 0.65 * Math.abs(Math.cos(clamp(e.st / 2.4, 0, 1) * Math.PI)) * (e.st < 0.5 ? 1 : 0.4) : 1;
@@ -777,7 +1023,98 @@ export class Renderer {
       }
     }
     g.restore();
-    void sim;
+    g.globalAlpha = 1;
+  }
+
+
+  private drawPuddles(g: CanvasRenderingContext2D, sim: Sim): void {
+    for (const q of sim.puddles) {
+      const a = clamp(q.age / 1.2, 0, 1) * clamp((q.life - q.age) / 0.8, 0, 1);
+      g.fillStyle = `rgba(52,84,112,${0.2 * a})`;
+      g.beginPath();
+      g.arc(q.x, q.y, q.r, 0, TAU);
+      g.fill();
+      g.strokeStyle = `rgba(44,59,104,${0.4 * a})`;
+      g.lineWidth = 1.5;
+      g.stroke();
+      // ripples
+      for (let i = 0; i < 2; i++) {
+        const k = (this.t * 0.45 + i * 0.5 + q.r * 0.01) % 1;
+        g.strokeStyle = `rgba(241,239,231,${0.5 * a * (1 - k)})`;
+        g.lineWidth = 1.2;
+        g.beginPath();
+        g.arc(q.x, q.y, q.r * (0.15 + 0.8 * k), 0, TAU);
+        g.stroke();
+      }
+    }
+  }
+
+  /** The thread between Bound Twins. */
+  private drawThreads(g: CanvasRenderingContext2D, sim: Sim): void {
+    g.strokeStyle = 'rgba(22,22,27,0.45)';
+    g.lineWidth = 1.4;
+    g.setLineDash([5, 6]);
+    for (const e of sim.enemies) {
+      if (e.kind !== 'twin' || e.dead || !e.link || e.id > e.link || e.spawn > 0) continue;
+      const m = sim.enemies.find((o) => o.id === e.link);
+      if (!m || m.dead) continue;
+      g.beginPath();
+      g.moveTo(e.x, e.y);
+      g.lineTo(m.x, m.y);
+      g.stroke();
+    }
+    g.setLineDash([]);
+  }
+
+  /** The Other Brush's stroke: the same kind of line as yours, in the wrong colour. */
+  private drawRivalLine(g: CanvasRenderingContext2D, sim: Sim): void {
+    const t = sim.rivalTrail;
+    if (t.length < 2) return;
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    g.strokeStyle = C.redDeep;
+    const n = t.length;
+    // thin where it is oldest, like any stroke
+    for (let i = 1; i < n; i += 6) {
+      g.lineWidth = 2 + 6 * clamp(i / 40, 0, 1);
+      g.beginPath();
+      g.moveTo(t[i - 1].x, t[i - 1].y);
+      for (let j = i; j < Math.min(n, i + 7); j++) g.lineTo(t[j].x, t[j].y);
+      g.stroke();
+    }
+    g.lineCap = 'butt';
+  }
+
+  /** Rain and gusts, drawn over the scene in screen space. */
+  private drawWeather(g: CanvasRenderingContext2D, sim: Sim, attract: boolean): void {
+    if (attract) return;
+    const hz = sim.scrollDef.hazard;
+    if (hz === 'rain') this.streaks(g, -0.22, 0.975, 1100, 46, 0.11, 26, 54, C.indigo);
+    else if (hz === 'wind' && sim.windPhase > 0) {
+      const blowing = sim.windPhase === 2;
+      const a = blowing ? 0.26 : 0.1 + 0.08 * Math.sin(this.t * 14);
+      this.streaks(g, sim.windDir.x, sim.windDir.y, blowing ? 1500 : 500, blowing ? 34 : 20, a, 70, 190, C.ink);
+    }
+  }
+
+  private streaks(g: CanvasRenderingContext2D, dx: number, dy: number, speed: number, count: number, alpha: number, lenMin: number, lenMax: number, color: string): void {
+    const W = this.W, H = this.H, span = Math.hypot(W, H) + 300;
+    g.strokeStyle = color;
+    g.globalAlpha = alpha;
+    g.lineWidth = 1.3;
+    g.beginPath();
+    for (let i = 0; i < count; i++) {
+      const h1 = ((i * 0.6180339) % 1), h2 = ((i * 0.3819660 + 0.17) % 1), h3 = ((i * 0.7548776) % 1);
+      // a point on the line through the screen centre perpendicular to the wind, then pushed along it
+      const side = (h1 - 0.5) * span;
+      const along = ((this.t * speed * (0.7 + h3 * 0.6) + h2 * span) % span) - span / 2;
+      const x = W / 2 - dy * side + dx * along, y = H / 2 + dx * side + dy * along;
+      const len = lenMin + (lenMax - lenMin) * h3;
+      g.moveTo(x, y);
+      g.lineTo(x - dx * len, y - dy * len);
+    }
+    g.stroke();
+    g.globalAlpha = 1;
   }
 
   private drawShots(g: CanvasRenderingContext2D, sim: Sim): void {
@@ -1000,7 +1337,7 @@ export class Renderer {
   /** Small markers at the edge of the view for the big things you cannot see. */
   private drawEdgeArrows(g: CanvasRenderingContext2D, sim: Sim, vx0: number, vy0: number, vw: number, vh: number): void {
     for (const e of sim.enemies) {
-      if (e.dead || (e.kind !== 'boss' && e.kind !== 'giant')) continue;
+      if (e.dead || (!BOSS_KINDS.includes(e.kind) && e.kind !== 'giant')) continue;
       if (e.x > vx0 && e.x < vx0 + vw && e.y > vy0 && e.y < vy0 + vh) continue;
       const cx = this.W / 2, cy = this.H / 2;
       const sp = this.toScreen(e.x, e.y);
@@ -1012,7 +1349,7 @@ export class Renderer {
       g.save();
       g.translate(cx + Math.cos(a) * k, cy + Math.sin(a) * k);
       g.rotate(a);
-      g.fillStyle = e.kind === 'boss' ? C.red : C.ink;
+      g.fillStyle = BOSS_KINDS.includes(e.kind) ? C.red : C.ink;
       g.beginPath();
       g.moveTo(12, 0);
       g.lineTo(-8, 9);
@@ -1033,9 +1370,9 @@ export class Renderer {
 
     // a pale band keeps the HUD readable wherever the camera is
     const band = g.createLinearGradient(0, 0, 0, 78);
-    band.addColorStop(0, 'rgba(228,225,214,0.92)');
-    band.addColorStop(0.7, 'rgba(228,225,214,0.6)');
-    band.addColorStop(1, 'rgba(228,225,214,0)');
+    band.addColorStop(0, `rgba(${this.theme.rgb},0.92)`);
+    band.addColorStop(0.7, `rgba(${this.theme.rgb},0.6)`);
+    band.addColorStop(1, `rgba(${this.theme.rgb},0)`);
     g.fillStyle = band;
     g.fillRect(0, 0, W, 78);
 
@@ -1085,6 +1422,13 @@ export class Renderer {
       g.fillText(clock(remain), W / 2, 46);
     }
 
+    if (sim.windPhase > 0) {
+      g.textAlign = 'center';
+      g.font = `700 12px ${BODY}`;
+      g.fillStyle = sim.windPhase === 2 ? C.red : C.inkSoft;
+      g.fillText(spaced(sim.windPhase === 2 ? 'GUST' : 'GUST COMING'), W / 2, st.boss ? 26 : 64);
+    }
+
     // score
     this.scoreShown += (sim.tally.score - this.scoreShown) * (1 - Math.exp(-dt * 8));
     g.textAlign = 'right';
@@ -1104,7 +1448,7 @@ export class Renderer {
       g.textAlign = 'center';
       g.font = `600 16px ${DISPLAY}`;
       g.fillStyle = C.ink;
-      g.fillText(ENEMIES.boss.name, W / 2, y - 20);
+      g.fillText(ENEMIES[boss.kind].name, W / 2, y - 20);
       for (let i = 0; i < n; i++) {
         const x = W / 2 - total / 2 + i * (pw + 6);
         g.fillStyle = i < boss.hp ? C.ink : 'rgba(22,22,27,0.14)';
@@ -1122,7 +1466,7 @@ export class Renderer {
       g.globalAlpha = a;
       g.textAlign = 'center';
       const big = clamp(W / 13, 30, 68);
-      g.fillStyle = 'rgba(228,225,214,0.72)';
+      g.fillStyle = `rgba(${this.theme.rgb},0.74)`;
       g.fillRect(0, y - big * 1.25, W, big * 2.7);
       g.fillStyle = C.red;
       g.font = `600 ${Math.round(big * 0.34)}px ${DISPLAY}`;
@@ -1267,13 +1611,13 @@ function eyes(g: CanvasRenderingContext2D, look: number, r: number, count: numbe
 }
 
 /** Washi-like paper: mottled tone plus short fibres. Tiles seamlessly. */
-function makePaperTile(): HTMLCanvasElement {
+function makePaperTile(base: string, fleck: string): HTMLCanvasElement {
   const S = 384;
   const c = document.createElement('canvas');
   c.width = c.height = S;
   const g = c.getContext('2d')!;
   const r = new Rng(4242);
-  g.fillStyle = C.paper;
+  g.fillStyle = base;
   g.fillRect(0, 0, S, S);
   const wrap = (fn: (ox: number, oy: number) => void) => {
     for (const ox of [0, -S, S]) for (const oy of [0, -S, S]) fn(ox, oy);
@@ -1293,6 +1637,10 @@ function makePaperTile(): HTMLCanvasElement {
     const x = r.range(0, S), y = r.range(0, S);
     g.fillStyle = r.chance(0.5) ? 'rgba(255,255,250,0.10)' : 'rgba(90,86,74,0.07)';
     g.fillRect(x, y, r.range(0.6, 1.8), r.range(0.6, 1.8));
+  }
+  if (fleck) {
+    g.fillStyle = fleck;
+    for (let i = 0; i < 150; i++) g.fillRect(r.range(0, S), r.range(0, S), r.range(1, 3.2), r.range(1, 2.4));
   }
   g.lineCap = 'round';
   for (let i = 0; i < 230; i++) {

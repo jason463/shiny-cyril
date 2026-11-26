@@ -1,6 +1,6 @@
 {
   "name": "inkwake",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Inkwake — draw loops of ink to seal spirits. A brush-stroke roguelike.",

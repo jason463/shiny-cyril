@@ -6,8 +6,8 @@ import { Bot } from '../src/sim/bot';
 
 const blows: Record<string, number> = {};
 
-function run(seed: number, depth: number, skill: number, marks: number[]) {
-  const sim = new Sim({ seed, brush: 'bamboo', depth });
+function run(seed: number, depth: number, skill: number, marks: number[], scroll = 0) {
+  const sim = new Sim({ seed, brush: 'bamboo', depth, scroll });
   const bot = new Bot(skill);
   const frame = 1 / 60;
   const snaps: string[] = [];
@@ -29,6 +29,19 @@ function run(seed: number, depth: number, skill: number, marks: number[]) {
   for (const k in sim.hurtLog) blows[k] = (blows[k] ?? 0) + (sim.hurtLog as Record<string, number>)[k];
   return { phase: sim.phase, time: Math.round(sim.time), stage: sim.stage + 1, level: sim.level, kills: sim.tally.kills, loops: sim.tally.loops, best: sim.tally.best, hits: sim.tally.hits, snaps: snaps.join('  ') };
 }
+
+describe('balance report: later scrolls', () => {
+  for (const scroll of [1, 2]) {
+    it(`scroll ${scroll + 1}, depth 1`, () => {
+      for (const k in blows) delete blows[k];
+      const rows = [];
+      for (let s = 1; s <= 10; s++) rows.push(run(s * 6007, 1, 1, [60, 180, 300], scroll));
+      console.table(rows.map(({ snaps, ...r }) => r));
+      console.log(`scroll ${scroll + 1}: ${rows.filter((r) => r.phase === 'won').length}/10 wins, reached finale ${rows.filter((r) => r.stage === 5).length}/10, blows ${JSON.stringify(blows)}`);
+      expect(rows.length).toBe(10);
+    });
+  }
+});
 
 describe('balance report', () => {
   it('depth 1', () => {

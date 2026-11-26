@@ -542,8 +542,15 @@ button.card:active {
   cursor: default;
 }
 
-.brush.picked {
+.brush.picked,
+.card.picked {
   box-shadow: 8px 10px 0 var(--red);
+}
+
+button.card[disabled] {
+  opacity: 0.55;
+  cursor: default;
+  box-shadow: none;
 }
 
 .stat {

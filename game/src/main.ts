@@ -1,7 +1,7 @@
 import './ui/styles.css';
 import { Sim, GameEvent } from './sim/sim';
 import { Bot } from './sim/bot';
-import { ACHIEVEMENTS, AchDef, ENEMIES, MAX_DEPTH, STAGES } from './sim/data';
+import { ACHIEVEMENTS, AchDef, ENEMIES, MAX_DEPTH, SCROLLS } from './sim/data';
 import { Renderer, Hud } from './render/renderer';
 import { AudioEngine } from './audio/audio';
 import { Input } from './input';
@@ -110,6 +110,8 @@ function setMode(m: Mode): void {
 
 function toTitle(): void {
   sim = new Sim({ seed: Date.now() % 1e9, brush: save.brush, depth: 1, attract: true });
+  renderer.setTheme(save.scroll);
+  audio.setMode(save.scroll);
   bot = new Bot(1);
   renderer.reset();
   renderer.snap(sim);
@@ -121,7 +123,10 @@ function toTitle(): void {
 
 function beginRun(): void {
   audio.start();
-  sim = new Sim({ seed: (Date.now() ^ (Math.random() * 1e9)) >>> 0, brush: save.brush, depth: save.depth });
+  save.scroll = Math.max(0, Math.min(save.scrollsUnlocked - 1, save.scroll));
+  sim = new Sim({ seed: (Date.now() ^ (Math.random() * 1e9)) >>> 0, brush: save.brush, depth: save.depth, scroll: save.scroll });
+  renderer.setTheme(sim.scroll);
+  audio.setMode(sim.scroll);
   bot = new Bot(1);
   renderer.reset();
   renderer.snap(sim);
@@ -179,6 +184,8 @@ function react(ev: GameEvent): void {
       if (ev.enso) deed('enso');
       if (sim.tally.ensos >= 10) deed('enso10');
       if (sim.tally.loops >= 100) deed('hundred');
+      if (ev.pairs >= 1) deed('pair');
+      if (ev.coils >= 6) deed('unravel');
       if (tutorial.step === 1 && ev.kills >= 1) {
         tutorial.step = 2;
         tutorial.t = 0;
@@ -224,6 +231,7 @@ function react(ev: GameEvent): void {
       break;
     case 'stage':
       if (ev.index >= 1) deed('margin');
+      if (ev.index === 0 && sim.scrollDef.hazardNote) ui.toast(sim.scrollDef.hazardNote, 6);
       break;
     case 'stageClear':
       audio.stageClear();
@@ -231,7 +239,23 @@ function react(ev: GameEvent): void {
       break;
     case 'arrive':
       audio.arrive();
-      ui.toast(ev.kind === 'boss' ? 'The Stain rises. Ring it while it is whole.' : 'A Great Blot is seeping in. It takes four rings.', 4.5);
+      ui.toast(ev.kind === 'boss' ? 'The Stain rises. Ring it while it is whole.'
+        : ev.kind === 'eel' ? 'The Undertow surfaces. Seal its coils first.'
+        : ev.kind === 'rival' ? 'Another brush. Touch its line to break the stroke.'
+        : 'A Great Blot is seeping in. It takes four rings.', 5);
+      break;
+    case 'wash':
+      audio.wash();
+      break;
+    case 'wind':
+      audio.gust();
+      break;
+    case 'eelOpen':
+      audio.arrive();
+      ui.toast('No coils left. Ring the head!', 4);
+      break;
+    case 'rivalLoop':
+      audio.loop(0, true);
       break;
     case 'bossReel':
       audio.bossHit();
@@ -261,6 +285,7 @@ function finishRun(won: boolean): void {
   const earned = Math.round((Math.floor(t.kills / 8) + t.stagesCleared * 10 + (won ? 40 : 0)) * depthMul);
   const best = t.score > save.best;
   let newDepth: number | null = null;
+  let newScroll: string | null = null;
 
   save.seals += earned;
   save.runs++;
@@ -269,6 +294,13 @@ function finishRun(won: boolean): void {
   if (save.totalKills >= 1000) deed('thousand');
   if (won) {
     save.wins++;
+    save.scrollWins[sim.scroll] = (save.scrollWins[sim.scroll] ?? 0) + 1;
+    if (sim.scroll === 1) deed('rain');
+    if (sim.scroll === 2) deed('gale');
+    if (sim.scroll + 1 === save.scrollsUnlocked && save.scrollsUnlocked < SCROLLS.length) {
+      save.scrollsUnlocked++;
+      newScroll = SCROLLS[save.scrollsUnlocked - 1].name;
+    }
     if (sim.brush.id !== 'bamboo') deed(sim.brush.id);
     if (sim.depth >= 3) deed('depth3');
     if (sim.depth >= 5) deed('depth5');
@@ -283,8 +315,8 @@ function finishRun(won: boolean): void {
   setMode('results');
   ui.results({
     won, score: t.score, best: best && t.score > 0, kills: t.kills, loops: t.loops, ensos: t.ensos, biggest: t.best,
-    time: sim.time, stageName: STAGES[Math.min(sim.stage, STAGES.length - 1)].name, earned,
-    newDeeds: runDeeds, newDepth, painting: renderer.painting(), canSave: !framed,
+    time: sim.time, stageName: sim.stages[Math.min(sim.stage, sim.stages.length - 1)].name, earned,
+    newDeeds: runDeeds, newDepth, newScroll, scrollName: sim.scrollDef.name, painting: renderer.painting(), canSave: !framed,
   });
 }
 
@@ -478,6 +510,11 @@ requestAnimationFrame(frame);
     return mode;
   },
   begin: beginRun,
+  /** open every scroll and pick one (0-based), for play-testing */
+  pickScroll(i: number) {
+    save.scrollsUnlocked = SCROLLS.length;
+    save.scroll = i;
+  },
   autoplay(on: boolean) {
     autoplay = on;
   },
@@ -509,7 +546,7 @@ requestAnimationFrame(frame);
   },
   /** jump straight to a stage (0-based) with a clean page */
   skipTo(stage: number) {
-    sim.stage = Math.max(0, Math.min(STAGES.length - 1, stage));
+    sim.stage = Math.max(0, Math.min(sim.stages.length - 1, stage));
     sim.stageT = 0;
     sim.enemies = [];
     sim.shots = [];

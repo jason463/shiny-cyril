@@ -10,6 +10,10 @@ export interface SaveData {
   brush: BrushId;
   depthUnlocked: number;
   depth: number;
+  /** how many scrolls are open (1-3), the one selected (0-based), and wins on each */
+  scrollsUnlocked: number;
+  scroll: number;
+  scrollWins: number[];
   best: number;
   runs: number;
   wins: number;
@@ -24,7 +28,7 @@ const KEY = 'inkwake.save.v1';
 
 export function defaultSave(): SaveData {
   return {
-    v: 1, seals: 0, brushes: ['bamboo'], brush: 'bamboo', depthUnlocked: 1, depth: 1,
+    v: 1, seals: 0, brushes: ['bamboo'], brush: 'bamboo', depthUnlocked: 1, depth: 1, scrollsUnlocked: 1, scroll: 0, scrollWins: [0, 0, 0],
     best: 0, runs: 0, wins: 0, totalKills: 0, seen: [], achievements: [], tutorialDone: false,
     settings: { music: 0.6, sfx: 0.8, shake: 1, fullscreen: false, haptics: true },
   };

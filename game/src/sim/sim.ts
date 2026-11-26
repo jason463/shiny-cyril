@@ -8,7 +8,7 @@ import {
 } from './geom';
 import {
   ARENA_W, ARENA_H, ARENA_PAD, ENEMIES, EnemyKind, BRUSHES, BrushDef, BrushId,
-  TECHS, TechId, RELICS, RelicId, STAGES, essenceFor,
+  TECHS, TechId, RELICS, RelicId, SCROLLS, ScrollDef, StageDef, BOSS_KINDS, essenceFor,
 } from './data';
 
 export const PLAYER_R = 9;
@@ -16,6 +16,7 @@ const TRAIL_STEP = 6;
 const MIN_LOOP_AREA = 1500;
 const ENEMY_CAP = 120;
 const KOI_R = 95;
+const RIVAL_REACH = 820;
 
 export interface Enemy {
   id: number;
@@ -36,6 +37,10 @@ export interface Enemy {
   ax: number; ay: number;
   face: number;
   seed: number;
+  /** id of a partner (Bound Twins) */
+  link: number;
+  /** position in a chain (Coils), flank side (Twins), or a per-kind counter */
+  order: number;
   dead: boolean;
 }
 
@@ -46,7 +51,7 @@ export interface Zone { poly: Pt[]; minx: number; miny: number; maxx: number; ma
 export type LoopSource = 'brush' | 'echo' | 'koi';
 
 export type GameEvent =
-  | { type: 'loop'; poly: Pt[]; cx: number; cy: number; radius: number; n: number; kills: number; q: number; enso: boolean; stamped: boolean; src: LoopSource }
+  | { type: 'loop'; poly: Pt[]; cx: number; cy: number; radius: number; n: number; kills: number; q: number; enso: boolean; stamped: boolean; src: LoopSource; pairs: number; coils: number }
   | { type: 'kill'; x: number; y: number; r: number; kind: EnemyKind; quiet: boolean }
   | { type: 'hit'; x: number; y: number; kind: EnemyKind }
   | { type: 'hurt'; x: number; y: number; hp: number }
@@ -68,6 +73,11 @@ export type GameEvent =
   | { type: 'arrive'; kind: EnemyKind; x: number; y: number }
   | { type: 'bossReel'; x: number; y: number; hp: number }
   | { type: 'bossDown'; x: number; y: number }
+  | { type: 'wash'; x: number; y: number }
+  | { type: 'wind'; x: number; y: number }
+  | { type: 'bound'; x: number; y: number }
+  | { type: 'eelOpen'; x: number; y: number }
+  | { type: 'rivalLoop'; poly: Pt[]; hit: boolean }
   | { type: 'win' };
 
 export interface Choice {
@@ -85,6 +95,8 @@ export interface SimOptions {
   seed: number;
   brush: BrushId;
   depth: number;
+  /** which scroll to paint, 0-based */
+  scroll?: number;
   /** attract mode: endless calm first stage, an untouchable brush, no level-ups */
   attract?: boolean;
 }
@@ -93,12 +105,21 @@ export type Phase = 'play' | 'levelup' | 'relic' | 'dead' | 'won';
 
 // boss states
 const B_CHASE = 0, B_WIND = 1, B_BURST = 2, B_AIM = 3, B_CHARGE = 4, B_REST = 5, B_REEL = 9;
+// The Undertow
+const E_SWIM = 0, E_AIM = 1, E_LUNGE = 2, E_OPEN = 3, E_GROW = 4;
+// The Other Brush
+const R_HUNT = 0, R_REST = 1, R_BLOT = 2, R_AIM = 3, R_SLASH = 4;
+
+export interface Puddle { x: number; y: number; r: number; age: number; life: number }
 
 export class Sim {
   readonly rng: Rng;
   readonly brush: BrushDef;
   readonly depth: number;
   readonly attract: boolean;
+  readonly scroll: number;
+  readonly scrollDef: ScrollDef;
+  readonly stages: StageDef[];
 
   phase: Phase = 'play';
   time = 0;
@@ -115,6 +136,30 @@ export class Sim {
   trailLen = 0;
   /** total length of line that has faded off the tail; keeps brush texture from crawling */
   trailOdo = 0;
+  /** bumped whenever the line is broken or restarted, so riders know to fall off */
+  trailGen = 0;
+
+  // hazards
+  puddles: Puddle[] = [];
+  inPuddle = false;
+  wind = { x: 0, y: 0 };
+  private windTo = { x: 0, y: 0 };
+  private windT = 7;
+  /** 0 calm, 1 a gust is coming (direction known), 2 blowing */
+  windPhase = 0;
+  windDir = { x: 1, y: 0 };
+  private puddleT = 3;
+
+  // The Other Brush's own line
+  rivalTrail: Pt[] = [];
+  private rivalLen = 0;
+
+  hasteT = 0;
+  /** how many rings The Other Brush has closed, and how many caught the brush */
+  rivalRings = 0;
+  rivalHits = 0;
+  private pushX = 0;
+  private pushY = 0;
 
   enemies: Enemy[] = [];
   shots: Shot[] = [];
@@ -133,7 +178,7 @@ export class Sim {
 
   stats = {
     trail: 600, speed: 250, power: 1, splash: 0, ember: 0, thread: 0, dashCd: 2.6,
-    ensoQ: 0.86, essenceMul: 1, ensoMul: 1.5, wet: 0, burst: 0, width: 9,
+    ensoQ: 0.86, essenceMul: 1, ensoMul: 1.5, wet: 0, burst: 0, width: 9, runink: 0, guard: 0,
   };
 
   tally = { kills: 0, loops: 0, ensos: 0, best: 0, score: 0, hits: 0, stagesCleared: 0 };
@@ -163,6 +208,9 @@ export class Sim {
     this.brush = BRUSHES.find((b) => b.id === opts.brush) ?? BRUSHES[0];
     this.depth = clamp(Math.round(opts.depth), 1, 9);
     this.attract = !!opts.attract;
+    this.scroll = clamp(Math.round(opts.scroll ?? 0), 0, SCROLLS.length - 1);
+    this.scrollDef = SCROLLS[this.scroll];
+    this.stages = this.scrollDef.stages;
     this.speedMul = 1 + 0.06 * (this.depth - 1);
     this.rateMul = 1 + 0.2 * (this.depth - 1);
     this.player.hp = this.player.maxHp = this.brush.hp;
@@ -198,6 +246,8 @@ export class Sim {
     s.wet = this.rank('wet') ? 0.2 + 0.15 * this.rank('wet') : 0;
     s.burst = this.rank('burst') + (b.id === 'reed' ? 1 : 0);
     s.width = b.width;
+    s.runink = this.rank('runink') ? 0.5 + this.rank('runink') : 0;
+    s.guard = this.rank('guard');
     this.koi.on = this.has('koi');
   }
 
@@ -211,7 +261,7 @@ export class Sim {
   }
 
   get stageDef() {
-    return STAGES[this.stage];
+    return this.stages[this.stage];
   }
 
   // ------------------------------------------------------------ main update
@@ -223,7 +273,9 @@ export class Sim {
     if (this.slowT > 0) this.slowT -= dt;
     if (this.blossomCd > 0) this.blossomCd -= dt;
 
+    if (this.hasteT > 0) this.hasteT -= dt;
     this.updatePlayer(dt, input);
+    if (!this.attract) this.updateHazards(dt);
     this.updateTrail();
     this.updateDirector(dt);
     this.updateEnemies(dt);
@@ -243,7 +295,7 @@ export class Sim {
       this.winT -= dt;
       if (this.winT < 0) {
         this.phase = 'won';
-        this.tally.stagesCleared = STAGES.length;
+        this.tally.stagesCleared = this.stages.length;
         this.events.push({ type: 'win' });
       }
       return;
@@ -289,10 +341,18 @@ export class Sim {
       p.dashY = p.fy;
       p.inv = Math.max(p.inv, 0.3);
       this.events.push({ type: 'dash', x: p.x, y: p.y });
+      // a flick snaps the line taut and throws off anything riding it
+      for (const e of this.enemies) {
+        if (e.kind === 'leech' && e.state === 1 && !e.dead) {
+          e.state = 0;
+          e.stun = 0.7;
+          e.cd = 1.6;
+        }
+      }
       if (s.burst > 0) {
         const R = 150, dur = 0.5 + 0.5 * s.burst;
         for (const e of this.enemies) {
-          if (e.dead || e.spawn > 0 || e.kind === 'boss') continue;
+          if (e.dead || e.spawn > 0 || this.anchored(e)) continue;
           const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1;
           if (d < R + e.r) {
             e.stun = Math.max(e.stun, dur);
@@ -302,20 +362,25 @@ export class Sim {
         }
         this.events.push({ type: 'burst', x: p.x, y: p.y, r: R });
       }
+      if (this.has('lefthand')) this.closeLoop(circlePoly(p.x, p.y, 78), 'echo');
     }
 
     if (p.dashT > 0) {
       p.dashT -= dt;
       const v = s.speed * 3.5;
+      this.pushX = this.pushY = 0;
       p.vx = p.dashX * v;
       p.vy = p.dashY * v;
     } else {
       const k = 1 - Math.exp(-dt * 11);
-      p.vx += (mx * s.speed - p.vx) * k;
-      p.vy += (my * s.speed - p.vy) * k;
+      const sp = s.speed * (this.hasteT > 0 ? 1.3 : 1);
+      p.vx += (mx * sp - p.vx) * k;
+      p.vy += (my * sp - p.vy) * k;
     }
-    p.x = clamp(p.x + p.vx * dt, ARENA_PAD, ARENA_W - ARENA_PAD);
-    p.y = clamp(p.y + p.vy * dt, ARENA_PAD, ARENA_H - ARENA_PAD);
+    // wind and anything shoving the brush (computed last frame) ride on top of its own motion
+    p.x = clamp(p.x + (p.vx + this.wind.x) * dt + this.pushX, ARENA_PAD, ARENA_W - ARENA_PAD);
+    p.y = clamp(p.y + (p.vy + this.wind.y) * dt + this.pushY, ARENA_PAD, ARENA_H - ARENA_PAD);
+    this.pushX = this.pushY = 0;
   }
 
   // ------------------------------------------------------------ the line
@@ -323,12 +388,22 @@ export class Sim {
   private resetTrail(): void {
     this.trail = [{ x: this.player.x, y: this.player.y }];
     this.trailLen = 0;
+    this.trailGen++;
   }
 
   private updateTrail(): void {
     const p = this.player, t = this.trail;
     if (t.length === 0) {
       this.resetTrail();
+      return;
+    }
+    if (this.inPuddle) {
+      // standing water: the brush lays no ink at all
+      if (t.length > 1) this.resetTrail();
+      else {
+        t[0].x = p.x;
+        t[0].y = p.y;
+      }
       return;
     }
     const a = t[t.length - 1];
@@ -346,6 +421,7 @@ export class Sim {
         this.closeLoop(poly, 'brush');
         this.trail = [b];
         this.trailLen = 0;
+        this.trailGen++;
         return;
       }
       break;
@@ -365,6 +441,7 @@ export class Sim {
             this.closeLoop(poly, 'brush');
             this.trail = [b];
             this.trailLen = 0;
+            this.trailGen++;
             return;
           }
         }
@@ -384,6 +461,7 @@ export class Sim {
 
   /** Sever the line at segment `j`: everything older than the cut is lost. */
   private cutTrail(j: number): void {
+    this.trailGen++;
     this.trail = this.trail.slice(j + 1);
     let l = 0;
     for (let i = 1; i < this.trail.length; i++) {
@@ -416,8 +494,10 @@ export class Sim {
       }
     }
 
+    // Wide Wrist seals a little beyond the ink
+    const net = this.has('wide') && src === 'brush' ? scalePoly(poly, 1.125) : poly;
     let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
-    for (const v of poly) {
+    for (const v of net) {
       if (v.x < minx) minx = v.x;
       if (v.x > maxx) maxx = v.x;
       if (v.y < miny) miny = v.y;
@@ -428,14 +508,30 @@ export class Sim {
     for (const e of this.enemies) {
       if (e.dead || e.spawn > 0 || e.grace > 0) continue;
       if (e.x < minx || e.x > maxx || e.y < miny || e.y > maxy) continue;
-      if (pointInPoly(e.x, e.y, poly)) inside.push(e);
+      if (pointInPoly(e.x, e.y, net)) inside.push(e);
     }
+    // Bound Twins: a ring must hold both, or it holds neither
+    let pairs = 0;
+    for (let i = inside.length - 1; i >= 0; i--) {
+      const e = inside[i];
+      if (e.kind !== 'twin') continue;
+      const mate = this.partner(e);
+      if (!mate) continue;
+      if (inside.includes(mate)) pairs += 0.5;
+      else {
+        inside.splice(i, 1);
+        e.stun = Math.max(e.stun, 0.5);
+        e.flash = 0.2;
+        this.events.push({ type: 'bound', x: e.x, y: e.y });
+      }
+    }
+    const coils = inside.filter((e) => e.kind === 'coil').length;
     const n = inside.length;
     this.mult = Math.max(1, n) * (enso ? 2 : 1);
 
     let kills = 0;
     const fallen: Pt[] = [];
-    const essMul = enso ? s.ensoMul : 1;
+    const essMul = (enso ? s.ensoMul : 1) * (n >= 4 && this.has('goldleaf') ? 2 : 1);
     for (const e of inside) {
       const at = { x: e.x, y: e.y };
       if (this.damage(e, power, c, essMul, src !== 'koi')) {
@@ -494,13 +590,13 @@ export class Sim {
     if (n >= 3 && !this.attract) {
       this.orbs.push({ x: c.x, y: c.y, vx: 0, vy: 0, value: (n - 2) * 0.6 * s.essenceMul, age: 0, heal: false, dead: false });
     }
-    if (s.ember > 0 && src === 'brush') {
-      this.zones.push({ poly, minx, miny, maxx, maxy, t: s.ember, max: s.ember, tick: 0.25 });
-    }
+    const burn = src === 'brush' ? Math.max(s.ember, enso && this.has('lens') ? 3 : 0) : 0;
+    if (burn > 0) this.zones.push({ poly, minx, miny, maxx, maxy, t: burn, max: burn, tick: 0.25 });
     if (src === 'brush') {
       if (this.has('echo')) this.pending.push({ poly: scalePoly(poly, 1.3), t: 0.42 });
       if (this.has('breath')) this.slowT = 2;
       if (this.has('hungry')) this.hungry = Math.min(0.6, this.hungry + 0.04);
+      if (s.runink > 0) this.hasteT = s.runink;
     }
     if (n >= 6 && this.has('charm') && !p.charm) {
       p.charm = true;
@@ -513,7 +609,7 @@ export class Sim {
     }
 
     if (n > this.tally.best) this.tally.best = n;
-    this.events.push({ type: 'loop', poly, cx: c.x, cy: c.y, radius, n, kills, q, enso, stamped, src });
+    this.events.push({ type: 'loop', poly, cx: c.x, cy: c.y, radius, n, kills, q, enso, stamped, src, pairs: Math.floor(pairs), coils });
   }
 
   /** Returns true when the spirit was sealed for good. */
@@ -523,6 +619,17 @@ export class Sim {
       // only a ring drawn around it counts: no chip damage from splashes, needles or the koi
       if (e.state === B_REEL || !direct) return false;
       amount = 1;
+    } else if (e.kind === 'eel') {
+      // only a head with no coils left can be sealed
+      if (e.state !== E_OPEN || !direct) return false;
+      amount = 1;
+    } else if (e.kind === 'rival') {
+      if (e.state === R_BLOT || !direct) return false;
+      amount = 1;
+    } else if (e.kind === 'coil') {
+      if (!direct) return false;
+    } else if (e.kind === 'twin') {
+      if (!direct && this.partner(e)) return false;
     } else if (e.kind === 'giant') {
       amount = Math.min(amount, 2);
     }
@@ -539,6 +646,20 @@ export class Sim {
       const far = this.farPoint(520);
       e.ax = far.x;
       e.ay = far.y;
+      this.events.push({ type: 'bossReel', x: e.x, y: e.y, hp: e.hp });
+    } else if (e.kind === 'eel') {
+      e.state = E_GROW;
+      e.st = 1.4;
+      e.order = this.coilCount(e);
+      this.events.push({ type: 'bossReel', x: e.x, y: e.y, hp: e.hp });
+    } else if (e.kind === 'rival') {
+      e.state = R_BLOT;
+      e.st = 1.3;
+      const far = this.farPoint(480);
+      e.ax = far.x;
+      e.ay = far.y;
+      this.rivalTrail = [];
+      this.rivalLen = 0;
       this.events.push({ type: 'bossReel', x: e.x, y: e.y, hp: e.hp });
     } else {
       e.stun = e.kind === 'giant' ? 1.1 : 0.8;
@@ -574,8 +695,9 @@ export class Sim {
       }
     } else if (e.kind === 'giant') {
       this.orbs.push({ x: e.x, y: e.y, vx: 0, vy: -40, value: 0, age: 0, heal: true, dead: false });
-    } else if (e.kind === 'boss') {
+    } else if (BOSS_KINDS.includes(e.kind)) {
       this.boss = null;
+      this.rivalTrail = [];
       this.winT = 2.6;
       for (const o of this.enemies) if (!o.dead) this.kill(o, 1, true);
       for (const sh of this.shots) sh.dead = true;
@@ -584,18 +706,20 @@ export class Sim {
   }
 
   private hurt(by: EnemyKind | 'bead'): void {
+    const g = this.stats.guard;
     const p = this.player;
     if (this.attract || p.inv > 0 || p.dashT > 0 || this.winT >= 0) return;
     this.lastHurtBy = by;
     this.hurtLog[by] = (this.hurtLog[by] ?? 0) + 1;
     const shock = () => {
       for (const e of this.enemies) {
-        if (e.dead || e.spawn > 0 || e.kind === 'boss') continue;
+        if (e.dead || e.spawn > 0 || this.anchored(e)) continue;
         const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1;
         if (d < 210) {
           e.stun = Math.max(e.stun, 0.7);
-          e.vx = (dx / d) * 330;
-          e.vy = (dy / d) * 330;
+          e.vx = (dx / d) * 330 * (1 + 0.35 * g);
+          e.vy = (dy / d) * 330 * (1 + 0.35 * g);
+          if (e.kind === 'leech') e.state = 0;
         }
       }
       for (const sh of this.shots) {
@@ -610,7 +734,7 @@ export class Sim {
       return;
     }
     p.hp--;
-    p.inv = 1.5;
+    p.inv = 1.5 + 0.5 * g;
     this.tally.hits++;
     this.stageHits++;
     this.hungry = 0;
@@ -627,12 +751,13 @@ export class Sim {
 
   private makeEnemy(kind: EnemyKind, x: number, y: number, spawn: number): Enemy {
     const def = ENEMIES[kind];
-    const hp = kind === 'boss' ? def.hp + (this.depth - 1) : def.hp;
+    const hp = kind === 'eel' ? def.hp + Math.floor((this.depth - 1) / 2)
+      : BOSS_KINDS.includes(kind) ? def.hp + (this.depth - 1) : def.hp;
     const e: Enemy = {
       id: this.nextId++, kind,
       x: clamp(x, ARENA_PAD, ARENA_W - ARENA_PAD), y: clamp(y, ARENA_PAD, ARENA_H - ARENA_PAD),
       vx: 0, vy: 0, r: def.r, hp, maxHp: hp, age: 0, spawn, spawnMax: spawn || 1, grace: 0, stun: 0, flash: 0, wet: 0,
-      state: 0, st: 0, cd: this.rng.range(0.6, 2.2), ax: 1, ay: 0, face: 0, seed: this.rng.range(0, 1000), dead: false,
+      state: 0, st: 0, cd: this.rng.range(0.6, 2.2), ax: 1, ay: 0, face: 0, seed: this.rng.range(0, 1000), link: 0, order: 0, dead: false,
     };
     this.enemies.push(e);
     return e;
@@ -670,7 +795,8 @@ export class Sim {
       }
     }
     this.nextKind = kind;
-    this.nextSize = kind === 'drifter' ? this.rng.int(3, 6) : kind === 'wisp' || kind === 'darter' ? this.rng.int(1, 2) : 1;
+    this.nextSize = kind === 'drifter' ? this.rng.int(3, 6) : kind === 'twin' ? 2
+      : kind === 'wisp' || kind === 'darter' || kind === 'kite' ? this.rng.int(1, 2) : 1;
   }
 
   private updateDirector(dt: number): void {
@@ -680,9 +806,20 @@ export class Sim {
     if (st.boss && !this.bossSpawned && this.stageT > 5) {
       this.bossSpawned = true;
       const at = this.farPoint(480);
-      this.boss = this.makeEnemy('boss', at.x, at.y, 2.2);
-      this.boss.st = 3;
-      this.events.push({ type: 'arrive', kind: 'boss', x: at.x, y: at.y });
+      const b = this.makeEnemy(st.boss, at.x, at.y, 2.2);
+      this.boss = b;
+      if (st.boss === 'boss') {
+        b.st = 3;
+      } else if (st.boss === 'eel') {
+        b.state = E_GROW;
+        b.st = 0.1;
+        b.order = this.coilCount(b);
+        b.cd = 5;
+      } else {
+        b.state = R_HUNT;
+        b.order = this.rng.chance(0.5) ? 1 : -1;
+      }
+      this.events.push({ type: 'arrive', kind: st.boss, x: at.x, y: at.y });
     }
     if (this.giantIdx < st.giants.length && this.stageT >= st.giants[this.giantIdx]) {
       this.giantIdx++;
@@ -702,8 +839,17 @@ export class Sim {
     if (this.budget < cost || this.enemies.length >= ENEMY_CAP) return;
     this.budget -= cost;
     const at = this.farPoint(this.attract ? 260 : 430);
+    const made: Enemy[] = [];
     for (let i = 0; i < this.nextSize; i++) {
-      this.makeEnemy(this.nextKind, at.x + this.rng.range(-55, 55), at.y + this.rng.range(-55, 55), this.rng.range(0.8, 1.15));
+      made.push(this.makeEnemy(this.nextKind, at.x + this.rng.range(-55, 55), at.y + this.rng.range(-55, 55), this.rng.range(0.8, 1.15)));
+    }
+    if (this.nextKind === 'twin' && made.length === 2) {
+      made[0].link = made[1].id;
+      made[1].link = made[0].id;
+      made[0].order = 1;
+      made[1].order = -1;
+      made[1].spawn = made[0].spawn;
+      made[1].spawnMax = made[0].spawnMax;
     }
     this.planNext();
   }
@@ -715,6 +861,12 @@ export class Sim {
     this.shots = [];
     this.zones = [];
     this.pending = [];
+    this.puddles = [];
+    this.inPuddle = false;
+    this.wind = { x: 0, y: 0 };
+    this.windTo = { x: 0, y: 0 };
+    this.windPhase = 0;
+    this.windT = 7;
     const untouched = this.stageHits === 0;
     this.events.push({ type: 'stageClear', index: this.stage, untouched });
     this.tally.stagesCleared = this.stage + 1;
@@ -789,6 +941,7 @@ export class Sim {
     this.choices = [];
     this.phase = 'play';
     p.inv = Math.max(p.inv, 0.8);
+    if (c.id === 'stillpond' || (wasRelic && this.has('stillpond'))) p.charm = true;
     if (wasRelic) {
       this.resetTrail();
       this.events.push({ type: 'stage', index: this.stage });
@@ -831,7 +984,8 @@ export class Sim {
 
       // contact with the line
       const touchR = e.r + s.width * 0.5;
-      if (t.length > 3 && (s.wet > 0 || (e.kind === 'cutter' && !waxed)) &&
+      const climbs = e.kind === 'leech' && e.state === 0 && e.cd <= 0 && e.stun <= 0 && t.length > 14;
+      if (t.length > 3 && (s.wet > 0 || climbs || (e.kind === 'cutter' && !waxed)) &&
         e.x > tminx - touchR && e.x < tmaxx + touchR && e.y > tminy - touchR && e.y < tmaxy + touchR) {
         for (let j = 0; j < t.length - 1; j += 2) {
           const j2 = Math.min(j + 2, t.length - 1);
@@ -840,6 +994,10 @@ export class Sim {
               this.cutTrail(j);
               e.cd = 1.2;
               this.events.push({ type: 'cut', x: e.x, y: e.y });
+            } else if (climbs) {
+              e.state = 1;
+              e.ax = this.trailGen;
+              e.ay = this.odoAt(j);
             } else if (s.wet > 0) {
               e.wet = 0.25;
             }
@@ -847,6 +1005,12 @@ export class Sim {
           }
         }
       }
+
+      if (e.kind === 'leech' && e.state === 1 && e.stun <= 0) {
+        this.rideLine(e, dt, slow);
+        continue;
+      }
+      if (e.kind === 'coil') continue; // placed by the chain, below
 
       if (e.stun > 0) {
         e.stun -= dt;
@@ -1001,6 +1165,66 @@ export class Sim {
           accel = 0;
           break;
         }
+        case 'leech': {
+          const w = Math.sin(e.age * 3 + e.seed) * 0.2;
+          tx = (ux - uy * w) * sp;
+          ty = (uy + ux * w) * sp;
+          break;
+        }
+        case 'twin': {
+          // the pair comes at you from two sides
+          if (d > 210 && this.partner(e)) {
+            const fx = p.x - uy * e.order * 180 - e.x, fy = p.y + ux * e.order * 180 - e.y;
+            const fd = Math.hypot(fx, fy) || 1;
+            tx = (fx / fd) * sp;
+            ty = (fy / fd) * sp;
+          } else {
+            tx = ux * sp;
+            ty = uy * sp;
+          }
+          break;
+        }
+        case 'kite': {
+          const w = Math.sin(e.age * 4 + e.seed) * 0.45;
+          tx = (ux - uy * w) * sp + this.wind.x * 0.9;
+          ty = (uy + ux * w) * sp + this.wind.y * 0.9;
+          accel = 4;
+          break;
+        }
+        case 'bellows': {
+          tx = ux * sp;
+          ty = uy * sp;
+          accel = 3;
+          // it breathes out: the brush is pushed away, harder the closer it gets
+          if (d < 200 && p.dashT <= 0 && !this.attract) {
+            const f = 165 * (1 - d / 200) * dt;
+            this.pushX += ux * f;
+            this.pushY += uy * f;
+          }
+          break;
+        }
+        case 'shade': {
+          tx = ux * sp;
+          ty = uy * sp;
+          accel = 6;
+          break;
+        }
+        case 'eel': {
+          this.eelBrain(e, dt, d, ux, uy, sp, slow);
+          tx = e.vx;
+          ty = e.vy;
+          accel = 0;
+          break;
+        }
+        case 'rival': {
+          this.rivalBrain(e, dt, d, ux, uy, sp, slow);
+          tx = e.vx;
+          ty = e.vy;
+          accel = 0;
+          break;
+        }
+        default:
+          break;
       }
 
       if (accel > 0) {
@@ -1008,13 +1232,19 @@ export class Sim {
         e.vx += (tx - e.vx) * k;
         e.vy += (ty - e.vy) * k;
       }
-      const nx = e.x + e.vx * dt, ny = e.y + e.vy * dt;
+      // the wind carries small things; the big ones lean into it
+      const drift = this.anchored(e) ? 0 : e.kind === 'giant' ? 0.4 : 1;
+      const nx = e.x + (e.vx + this.wind.x * drift) * dt, ny = e.y + (e.vy + this.wind.y * drift) * dt;
       e.x = clamp(nx, ARENA_PAD, ARENA_W - ARENA_PAD);
       e.y = clamp(ny, ARENA_PAD, ARENA_H - ARENA_PAD);
 
       // touch
-      if (e.grace <= 0 && !(e.kind === 'boss' && e.state === B_REEL) && d < e.r + PLAYER_R - 3) this.hurt(e.kind);
+      const harmless = (e.kind === 'boss' && e.state === B_REEL) || (e.kind === 'eel' && (e.state === E_OPEN || e.state === E_GROW))
+        || (e.kind === 'rival' && e.state === R_BLOT);
+      if (e.grace <= 0 && !harmless && d < e.r + PLAYER_R - 3) this.hurt(e.kind);
     }
+
+    this.updateChain();
 
     // soft separation so groups read as groups instead of one stacked blot
     const es = this.enemies;
@@ -1031,13 +1261,374 @@ export class Sim {
         if (dd >= min * min || dd === 0) continue;
         const d = Math.sqrt(dd), push = (min - d) * 0.5;
         const ux = dx / d, uy = dy / d;
-        const wa = a.kind === 'boss' || a.kind === 'giant' ? 0 : b.kind === 'boss' || b.kind === 'giant' ? 2 : 1;
+        if (a.kind === 'coil' && b.kind === 'coil') continue;
+        const ha = this.anchored(a) || a.kind === 'giant', hb = this.anchored(b) || b.kind === 'giant';
+        const wa = ha ? 0 : hb ? 2 : 1;
         const wb = 2 - wa;
         a.x -= ux * push * wa;
         a.y -= uy * push * wa;
         b.x += ux * push * wb;
         b.y += uy * push * wb;
       }
+    }
+  }
+
+
+  // ------------------------------------------------------------ helpers for the newer spirits
+
+  /** Things that cannot be shoved, stunned or blown about. */
+  private anchored(e: Enemy): boolean {
+    return e.kind === 'coil' || BOSS_KINDS.includes(e.kind);
+  }
+
+  /** A Bound Twin's living partner, if it still has one. */
+  private partner(e: Enemy): Enemy | null {
+    if (!e.link) return null;
+    for (const o of this.enemies) if (o.id === e.link) return o.dead ? null : o;
+    return null;
+  }
+
+  private coilCount(head: Enemy): number {
+    return 13 + 4 * (head.maxHp - head.hp) + 2 * (this.depth - 1);
+  }
+
+  /** Distance along the whole life of the line at which trail point `j` sits. */
+  private odoAt(j: number): number {
+    const t = this.trail;
+    let o = this.trailOdo;
+    for (let i = 1; i <= j && i < t.length; i++) o += Math.hypot(t[i].x - t[i - 1].x, t[i].y - t[i - 1].y);
+    return o;
+  }
+
+  /** A Leech on the line slides along it towards the brush. */
+  private rideLine(e: Enemy, dt: number, slow: number): void {
+    const t = this.trail, p = this.player;
+    const off = () => {
+      e.state = 0;
+      e.stun = 0.5;
+      e.cd = 1.4;
+      e.vx = e.vy = 0;
+    };
+    if (e.ax !== this.trailGen || e.ay < this.trailOdo || t.length < 2) {
+      off();
+      return;
+    }
+    e.ay += 285 * this.speedMul * slow * dt;
+    let o = this.trailOdo;
+    for (let i = 1; i < t.length; i++) {
+      const len = Math.hypot(t[i].x - t[i - 1].x, t[i].y - t[i - 1].y);
+      if (o + len >= e.ay) {
+        const k = len > 0 ? (e.ay - o) / len : 0;
+        e.x = t[i - 1].x + (t[i].x - t[i - 1].x) * k;
+        e.y = t[i - 1].y + (t[i].y - t[i - 1].y) * k;
+        return;
+      }
+      o += len;
+    }
+    // ran off the wet end of the line: it is at the brush
+    // It drops off beside the tip and needs a beat to bite: keep moving and it misses.
+    e.x = p.x - p.fx * 6;
+    e.y = p.y - p.fy * 6;
+    e.state = 0;
+    e.cd = 1.5;
+    e.stun = 0.38;
+    e.vx = e.vy = 0;
+  }
+
+  /** Coils follow whatever is ahead of them, nose to tail, back to the head. */
+  private updateChain(): void {
+    const head = this.boss;
+    if (!head || head.kind !== 'eel' || head.dead) return;
+    const p = this.player;
+    const coils = this.enemies.filter((e) => e.kind === 'coil' && !e.dead);
+    if (!coils.length) return;
+    coils.sort((a, b) => a.order - b.order);
+    let prev: Enemy = head;
+    for (const c of coils) {
+      c.age += 0;
+      let dx = c.x - prev.x, dy = c.y - prev.y;
+      let d = Math.hypot(dx, dy);
+      if (d < 0.001) {
+        dx = -head.ax;
+        dy = -head.ay;
+        d = 1;
+      }
+      const gap = (prev.r + c.r) * 0.74;
+      c.x = prev.x + (dx / d) * gap;
+      c.y = prev.y + (dy / d) * gap;
+      c.vx = c.vy = 0;
+      if (c.spawn <= 0 && c.grace <= 0 && Math.hypot(p.x - c.x, p.y - c.y) < c.r + PLAYER_R - 3) this.hurt('coil');
+      prev = c;
+    }
+  }
+
+  private eelBrain(e: Enemy, dt: number, d: number, ux: number, uy: number, sp: number, slow: number): void {
+    const p = this.player;
+    const rage = 1 + 0.13 * (e.maxHp - e.hp);
+    const alive = this.enemies.some((o) => o.kind === 'coil' && !o.dead);
+    const turn = (tx: number, ty: number, rate: number) => {
+      const want = Math.atan2(ty, tx), have = Math.atan2(e.ay, e.ax);
+      let da = want - have;
+      while (da > Math.PI) da -= TAU;
+      while (da < -Math.PI) da += TAU;
+      const a = have + clamp(da, -rate * dt, rate * dt);
+      e.ax = Math.cos(a);
+      e.ay = Math.sin(a);
+    };
+    if (!alive && (e.state === E_SWIM || e.state === E_AIM || e.state === E_LUNGE)) {
+      e.state = E_OPEN;
+      e.st = 5;
+      this.events.push({ type: 'eelOpen', x: e.x, y: e.y });
+    }
+    e.st -= dt;
+    switch (e.state) {
+      case E_SWIM: {
+        // circle the brush, tightening, so the body closes around it
+        const side = e.seed % 2 < 1 ? 1 : -1;
+        const ang = Math.atan2(e.y - p.y, e.x - p.x) + side * 0.95;
+        const R = 230;
+        const tx = d > 560 ? ux : p.x + Math.cos(ang) * R - e.x;
+        const ty = d > 560 ? uy : p.y + Math.sin(ang) * R - e.y;
+        turn(tx, ty, 2.5);
+        e.vx = e.ax * sp * rage;
+        e.vy = e.ay * sp * rage;
+        if (e.cd <= 0 && d < 520) {
+          e.state = E_AIM;
+          e.st = 0.85;
+        }
+        break;
+      }
+      case E_AIM: {
+        turn(ux, uy, 7);
+        e.vx = e.ax * sp * 0.25;
+        e.vy = e.ay * sp * 0.25;
+        if (e.st <= 0) {
+          e.state = E_LUNGE;
+          e.st = 0.7;
+        }
+        break;
+      }
+      case E_LUNGE: {
+        e.vx = e.ax * 440 * slow;
+        e.vy = e.ay * 440 * slow;
+        if (e.st <= 0) {
+          e.state = E_SWIM;
+          e.cd = 5 / rage;
+        }
+        break;
+      }
+      case E_OPEN: {
+        e.vx *= Math.exp(-dt * 4);
+        e.vy *= Math.exp(-dt * 4);
+        if (e.st <= 0) {
+          // not sealed in time: it grows half its body back
+          e.state = E_GROW;
+          e.st = 1.0;
+          e.order = Math.ceil(this.coilCount(e) / 2);
+        }
+        break;
+      }
+      case E_GROW: {
+        e.vx *= Math.exp(-dt * 4);
+        e.vy *= Math.exp(-dt * 4);
+        if (e.st <= 0) {
+          for (let i = 0; i < e.order; i++) {
+            const c = this.makeEnemy('coil', e.x - e.ax * 4 * (i + 1), e.y - e.ay * 4 * (i + 1), 0);
+            c.order = i;
+            c.grace = 0.7;
+            c.link = e.id;
+          }
+          e.state = E_SWIM;
+          e.cd = 4;
+        }
+        break;
+      }
+    }
+  }
+
+  private rivalBrain(e: Enemy, dt: number, d: number, ux: number, uy: number, sp: number, slow: number): void {
+    const p = this.player;
+    const rage = 1 + 0.06 * (e.maxHp - e.hp);
+    e.st -= dt;
+    if (e.state === R_BLOT) {
+      // sealed once: it scatters to a bead of ink and re-forms somewhere far off
+      const mx = e.ax - e.x, my = e.ay - e.y, md = Math.hypot(mx, my) || 1;
+      const v = Math.min(md * 3, 560);
+      e.vx = (mx / md) * v;
+      e.vy = (my / md) * v;
+      if (e.st <= 0) {
+        e.state = R_HUNT;
+        e.vx = e.vy = 0;
+        e.order = this.rng.chance(0.5) ? 1 : -1;
+      }
+      return;
+    }
+    if (e.state === R_REST) {
+      e.vx *= Math.exp(-dt * 8);
+      e.vy *= Math.exp(-dt * 8);
+      if (e.st <= 0) {
+        // it comes out of a stagger angry: sometimes straight at you
+        if (d < 520 && this.rng.chance(0.55)) {
+          e.state = R_AIM;
+          e.st = 0.8;
+        } else {
+          e.state = R_HUNT;
+          e.order = this.rng.chance(0.5) ? 1 : -1;
+        }
+      }
+      return;
+    }
+    if (e.state === R_AIM) {
+      e.vx *= Math.exp(-dt * 8);
+      e.vy *= Math.exp(-dt * 8);
+      if (e.st > 0.25) {
+        e.ax = ux;
+        e.ay = uy;
+      }
+      if (e.st <= 0) {
+        e.state = R_SLASH;
+        e.st = 0.5;
+        e.vx = e.ax * 640 * slow;
+        e.vy = e.ay * 640 * slow;
+      }
+      return;
+    }
+    if (e.state === R_SLASH) {
+      if (e.st <= 0) {
+        e.state = R_HUNT;
+        e.order = this.rng.chance(0.5) ? 1 : -1;
+      }
+      return;
+    }
+    // R_HUNT: draw a ring around the brush
+    const ang = Math.atan2(e.y - p.y, e.x - p.x) + e.order * 0.8;
+    const R = 162;
+    let tx = d > 430 ? ux : p.x + Math.cos(ang) * R - e.x;
+    let ty = d > 430 ? uy : p.y + Math.sin(ang) * R - e.y;
+    const td = Math.hypot(tx, ty) || 1;
+    tx /= td;
+    ty /= td;
+    const k = 1 - Math.exp(-dt * 9);
+    e.vx += (tx * sp * rage * slow - e.vx) * k;
+    e.vy += (ty * sp * rage * slow - e.vy) * k;
+
+    const t = this.rivalTrail;
+    if (!t.length) {
+      t.push({ x: e.x, y: e.y });
+      return;
+    }
+    // Its line can be broken the way a Cutter breaks yours: touch it with the brush.
+    // A broken stroke staggers it, and that is the moment to ring it.
+    if (this.rivalLen >= 260) {
+      for (let j = 0; j < t.length - 1; j += 2) {
+        const j2 = Math.min(j + 2, t.length - 1);
+        if (distToSegSq(p.x, p.y, t[j].x, t[j].y, t[j2].x, t[j2].y) < 11 * 11) {
+          this.events.push({ type: 'cut', x: p.x, y: p.y });
+          this.rivalTrail = [];
+          this.rivalLen = 0;
+          e.state = R_REST;
+          e.st = 1.6 / Math.sqrt(rage);
+          return;
+        }
+      }
+    }
+    const a = t[t.length - 1];
+    const step = Math.hypot(e.x - a.x, e.y - a.y);
+    if (step < 7) return;
+    const b = { x: e.x, y: e.y };
+    for (let j = t.length - 4; j >= 0; j--) {
+      const hit = segIntersect(a.x, a.y, b.x, b.y, t[j].x, t[j].y, t[j + 1].x, t[j + 1].y);
+      if (!hit) continue;
+      const poly: Pt[] = [hit];
+      for (let i = j + 1; i < t.length; i++) poly.push(t[i]);
+      if (Math.abs(polyArea(poly)) >= MIN_LOOP_AREA * 3) {
+        this.rivalClose(e, poly);
+        return;
+      }
+      break;
+    }
+    t.push(b);
+    this.rivalLen += step;
+    while (this.rivalLen > RIVAL_REACH && t.length > 2) {
+      this.rivalLen -= Math.hypot(t[1].x - t[0].x, t[1].y - t[0].y);
+      t.shift();
+    }
+  }
+
+  /** The Other Brush finished a ring. If the brush is inside it, that is a blow. */
+  private rivalClose(e: Enemy, poly: Pt[]): void {
+    const p = this.player;
+    const inside = pointInPoly(p.x, p.y, poly) && p.inv <= 0 && p.dashT <= 0;
+    this.rivalRings++;
+    if (inside) this.rivalHits++;
+    this.events.push({ type: 'rivalLoop', poly, hit: inside });
+    if (inside) this.hurt('rival');
+    const c = polyCentroid(poly);
+    if (this.enemies.length < 70) {
+      for (let i = 0; i < 3; i++) {
+        const a = this.rng.range(0, TAU);
+        this.makeEnemy('drifter', c.x + Math.cos(a) * 30, c.y + Math.sin(a) * 30, 0.7);
+      }
+    }
+    this.rivalTrail = [];
+    this.rivalLen = 0;
+    e.state = R_REST;
+    e.st = 2.8 / Math.sqrt(1 + 0.045 * (e.maxHp - e.hp));
+  }
+
+  // ------------------------------------------------------------ weather
+
+  private updateHazards(dt: number): void {
+    const p = this.player, hz = this.scrollDef.hazard;
+    if (hz === 'rain') {
+      this.puddleT -= dt;
+      const cap = 2 + this.stage;
+      if (this.puddleT <= 0 && this.puddles.length < cap) {
+        this.puddleT = this.rng.range(4.5, 7) - this.stage * 0.5;
+        for (let tries = 0; tries < 6; tries++) {
+          const a = this.rng.range(0, TAU), dd = this.rng.range(170, 520);
+          const x = clamp(p.x + Math.cos(a) * dd, ARENA_PAD + 90, ARENA_W - ARENA_PAD - 90);
+          const y = clamp(p.y + Math.sin(a) * dd, ARENA_PAD + 90, ARENA_H - ARENA_PAD - 90);
+          const r = this.rng.range(58, 98);
+          if (Math.hypot(x - p.x, y - p.y) < r + 110) continue;
+          if (this.puddles.some((q) => Math.hypot(q.x - x, q.y - y) < q.r + r + 30)) continue;
+          this.puddles.push({ x, y, r, age: 0, life: this.rng.range(13, 18) });
+          break;
+        }
+      }
+      let wet = false;
+      for (const q of this.puddles) {
+        q.age += dt;
+        // a puddle takes a moment to gather before it can wash the line
+        if (q.age > 1.2 && q.age < q.life - 0.5 && Math.hypot(p.x - q.x, p.y - q.y) < q.r * 0.94) wet = true;
+      }
+      if (this.puddles.some((q) => q.age >= q.life)) this.puddles = this.puddles.filter((q) => q.age < q.life);
+      if (wet && !this.inPuddle) this.events.push({ type: 'wash', x: p.x, y: p.y });
+      this.inPuddle = wet;
+    } else if (hz === 'wind') {
+      // Wind comes in gusts: calm, a warning, then a few seconds in which everything on the page slides.
+      this.windT -= dt;
+      if (this.windT <= 0) {
+        if (this.windPhase === 0) {
+          this.windPhase = 1;
+          this.windT = 1.7;
+          const a = this.rng.range(0, TAU);
+          this.windDir = { x: Math.cos(a), y: Math.sin(a) };
+          this.events.push({ type: 'wind', x: this.windDir.x, y: this.windDir.y });
+        } else if (this.windPhase === 1) {
+          this.windPhase = 2;
+          this.windT = 2.4 + this.stage * 0.2;
+          const m = Math.min(130, 86 + this.stage * 11);
+          this.windTo = { x: this.windDir.x * m, y: this.windDir.y * m };
+        } else {
+          this.windPhase = 0;
+          this.windT = this.rng.range(6.5, 9.5) - this.stage * 0.5;
+          this.windTo = { x: 0, y: 0 };
+        }
+      }
+      const k = 1 - Math.exp(-dt * 3.2);
+      this.wind.x += (this.windTo.x - this.wind.x) * k;
+      this.wind.y += (this.windTo.y - this.wind.y) * k;
     }
   }
 
@@ -1161,8 +1752,8 @@ export class Sim {
     const waxed = this.has('waxed');
     for (const s of this.shots) {
       if (s.dead) continue;
-      s.x += s.vx * dt;
-      s.y += s.vy * dt;
+      s.x += (s.vx + this.wind.x) * dt;
+      s.y += (s.vy + this.wind.y) * dt;
       s.life -= dt;
       if (s.life <= 0 || s.x < 0 || s.y < 0 || s.x > ARENA_W || s.y > ARENA_H) {
         s.dead = true;
@@ -1221,7 +1812,7 @@ export class Sim {
       z.tick = 0.5;
       const c = polyCentroid(z.poly);
       for (const e of this.enemies) {
-        if (e.dead || e.spawn > 0 || e.grace > 0 || e.kind === 'boss') continue;
+        if (e.dead || e.spawn > 0 || e.grace > 0 || BOSS_KINDS.includes(e.kind)) continue;
         if (e.x < z.minx || e.x > z.maxx || e.y < z.miny || e.y > z.maxy) continue;
         if (pointInPoly(e.x, e.y, z.poly)) this.damage(e, 1, c, 1);
       }
@@ -1255,7 +1846,7 @@ export class Sim {
       if (k.cd <= 0) {
         let best: Enemy | null = null, bd = 430 * 430;
         for (const e of this.enemies) {
-          if (e.dead || e.spawn > 0 || e.kind === 'boss') continue;
+          if (e.dead || e.spawn > 0 || BOSS_KINDS.includes(e.kind)) continue;
           const dd = (e.x - p.x) * (e.x - p.x) + (e.y - p.y) * (e.y - p.y);
           if (dd < bd) {
             bd = dd;
@@ -1298,4 +1889,7 @@ export class Sim {
   }
 }
 
-export { B_AIM, B_BURST, B_CHARGE, B_CHASE, B_REEL, B_REST, B_WIND, KOI_R };
+export {
+  B_AIM, B_BURST, B_CHARGE, B_CHASE, B_REEL, B_REST, B_WIND, KOI_R,
+  E_SWIM, E_AIM, E_LUNGE, E_OPEN, E_GROW, R_HUNT, R_REST, R_BLOT, R_AIM, R_SLASH,
+};

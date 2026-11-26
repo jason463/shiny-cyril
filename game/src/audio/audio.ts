@@ -1,8 +1,16 @@
 // All sound is synthesised at runtime with Web Audio: no audio files.
 // Music is a sparse generative piece on an in-sen scale that thickens as the page fills.
 
-const SCALE = [0, 1, 5, 7, 10]; // in-sen: D E♭ G A C
-const ROOT = 146.83; // D3
+// One five-note mode per scroll: in-sen for the white page, a darker hirajōshi for rain,
+// and the open, brighter yo scale for the gale.
+const MODES = [
+  { scale: [0, 1, 5, 7, 10], root: 146.83, tempo: 66 },
+  { scale: [0, 2, 3, 7, 8], root: 130.81, tempo: 60 },
+  { scale: [0, 2, 5, 7, 9], root: 164.81, tempo: 76 },
+];
+let SCALE = MODES[0].scale;
+let ROOT = MODES[0].root;
+let TEMPO = MODES[0].tempo;
 
 function note(deg: number): number {
   const oct = Math.floor(deg / SCALE.length);
@@ -22,6 +30,7 @@ export class AudioEngine {
   private melody = 7;
   private rand = mulberry(99);
   private droneGain: GainNode | null = null;
+  private drones: OscillatorNode[] = [];
 
   musicVol = 0.6;
   sfxVol = 0.8;
@@ -32,6 +41,28 @@ export class AudioEngine {
 
   get ready(): boolean {
     return !!this.ctx;
+  }
+
+  /** Pick the scale and pace for a scroll (0-based). The drone retunes over a few seconds. */
+  setMode(i: number): void {
+    const m = MODES[Math.max(0, Math.min(MODES.length - 1, i))];
+    SCALE = m.scale;
+    ROOT = m.root;
+    TEMPO = m.tempo;
+    if (this.ctx) {
+      const t = this.ctx.currentTime;
+      this.drones.forEach((o, k) => o.frequency.setTargetAtTime(k === 0 ? ROOT / 2 : k === 1 ? (ROOT / 2) * 1.5 : ROOT / 2 + 0.6, t, 1.2));
+    }
+  }
+
+  gust(): void {
+    if (!this.ctx) return;
+    this.burst(this.now(), 1.6, 0.16, 300, 0.4, this.sfx, 1400);
+  }
+
+  wash(): void {
+    if (!this.ctx) return;
+    this.burst(this.now(), 0.35, 0.16, 2600, 0.7, this.sfx, 500);
   }
 
   /** Must be called from a user gesture the first time. */
@@ -89,6 +120,7 @@ export class AudioEngine {
       o.connect(og);
       og.connect(this.droneGain);
       o.start();
+      this.drones.push(o);
     }
     this.droneGain.gain.linearRampToValueAtTime(0.12, c.currentTime + 4);
     this.nextBeat = c.currentTime + 0.3;
@@ -115,7 +147,7 @@ export class AudioEngine {
     const c = this.ctx;
     if (!c) return;
     const horizon = until ?? c.currentTime + 0.25;
-    const step = 60 / (66 + this.intensity * 30) / 2; // eighth notes
+    const step = 60 / (TEMPO + this.intensity * 30) / 2; // eighth notes
     while (this.nextBeat < horizon) {
       this.playBeat(this.nextBeat, this.beat);
       this.nextBeat += step;

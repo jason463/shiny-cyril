@@ -1,7 +1,7 @@
 // Menus and overlays, as plain DOM laid over the canvas.
 
 import {
-  ACHIEVEMENTS, AchDef, BRUSHES, BrushId, ENEMIES, EnemyKind, MAX_DEPTH, RELICS, TECHS, TechId,
+  ACHIEVEMENTS, AchDef, BRUSHES, BrushId, ENEMIES, EnemyKind, MAX_DEPTH, NUMERALS, RELICS, SCROLLS, TECHS, TechId,
 } from '../sim/data';
 import { Choice, Sim } from '../sim/sim';
 import { SaveData } from '../save';
@@ -65,6 +65,8 @@ export interface ResultsData {
   earned: number;
   newDeeds: AchDef[];
   newDepth: number | null;
+  newScroll: string | null;
+  scrollName: string;
   painting: HTMLCanvasElement;
   canSave: boolean;
 }
@@ -83,7 +85,7 @@ export interface Handlers {
   sound(kind: 'move' | 'pick' | 'back'): void;
 }
 
-export type ScreenName = 'title' | 'brushes' | 'almanac' | 'settings' | 'pause' | 'choice' | 'results' | null;
+export type ScreenName = 'title' | 'scrolls' | 'brushes' | 'almanac' | 'settings' | 'pause' | 'choice' | 'results' | null;
 
 export class UI {
   screen: ScreenName = null;
@@ -248,7 +250,7 @@ export class UI {
         h('div', { class: 'wordmark' }, h('h1', {}, 'Inkwake'), h('span', { class: 'seal', 'aria-hidden': 'true' })),
         h('p', { class: 'tagline' }, 'Draw a ring around the spirits. Cross your own line, and everything inside is sealed.'),
         h('nav', { class: 'menu' },
-          item('Begin a painting', () => this.on.begin(), true),
+          item('Begin a painting', () => (s.scrollsUnlocked > 1 ? this.scrolls() : this.on.begin()), true),
           item('Brushes', () => this.brushes()),
           item('Almanac', () => this.almanac()),
           item('Settings', () => this.settings('title')),
@@ -269,6 +271,41 @@ export class UI {
     this.on.sound('move');
     this.on.changed();
     this.title();
+  }
+
+  // ------------------------------------------------------------ scrolls
+
+  scrolls(): void {
+    const s = this.save;
+    const cards = SCROLLS.map((sc, i) => {
+      const open = i < s.scrollsUnlocked;
+      const wins = s.scrollWins[i] ?? 0;
+      return h('button', {
+        class: `card ${i === s.scroll ? 'picked' : ''}`, type: 'button', disabled: !open, 'data-first': i === s.scroll,
+        onclick: () => {
+          this.on.sound('pick');
+          s.scroll = i;
+          this.on.changed();
+          this.on.begin();
+        },
+      },
+      h('span', { class: 'kind' }, `Scroll ${NUMERALS[i]}`),
+      h('h3', {}, open ? sc.name : 'Still rolled'),
+      h('p', {}, open ? sc.blurb : `Finish ${SCROLLS[i - 1].name} to unroll it.`),
+      open && sc.hazardNote ? h('p', { class: 'muted' }, sc.hazardNote) : null,
+      open ? h('span', { class: 'chip' }, wins > 0 ? `Finished ${wins} time${wins === 1 ? '' : 's'}` : 'Not yet finished') : null,
+      );
+    });
+    const el = h('section', { class: 'screen wash' },
+      h('div', { class: 'sheet' },
+        h('div', { class: 'row spread' },
+          h('div', {}, h('div', { class: 'eyebrow' }, `Depth ${s.depth}`), h('h2', {}, 'Choose a scroll')),
+          this.btn('Back', () => this.title(), 'quiet'),
+        ),
+        h('div', { class: 'cards' }, ...cards),
+      ),
+    );
+    this.mount('scrolls', el, () => this.title());
   }
 
   // ------------------------------------------------------------ brushes
@@ -514,7 +551,7 @@ export class UI {
     const el = h('section', { class: 'screen wash' },
       h('div', { class: 'sheet' },
         h('div', {},
-          h('div', { class: 'eyebrow' }, d.won ? 'The page is clean' : `The ink ran dry in ${d.stageName}`),
+          h('div', { class: 'eyebrow' }, d.won ? `${d.scrollName} · the page is clean` : `${d.scrollName} · the ink ran dry in ${d.stageName}`),
           h('h2', {}, d.won ? 'A finished painting' : 'An unfinished painting'),
         ),
         h('div', { class: 'results' },
@@ -529,6 +566,7 @@ export class UI {
               ...fig('Time', `${mins}:${String(secs).padStart(2, '0')}`),
             ),
             h('div', { class: 'earned' }, `+${d.earned} seals`),
+            d.newScroll ? h('p', {}, h('b', {}, `${d.newScroll} has unrolled. `), 'A new sheet, new spirits, and something waiting at the bottom of it.') : null,
             d.newDepth ? h('p', {}, h('b', {}, `Depth ${d.newDepth} is open. `), 'The spirits there are faster and there are more of them.') : null,
             d.newDeeds.length
               ? h('div', {}, h('div', { class: 'eyebrow' }, 'New deeds'), h('div', { class: 'build', style: 'margin-top:8px' }, ...d.newDeeds.map((a) => h('span', { class: 'chip relic', title: a.desc }, a.name))))

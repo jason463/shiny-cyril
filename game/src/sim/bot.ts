@@ -56,6 +56,9 @@ export class Bot {
         if (n >= 40) break;
       }
       const R = clamp(spread + 46, 70, maxR);
+      // the group is drifting with the wind: ring where it will be, not where it is
+      cx += sim.wind.x * 0.9;
+      cy += sim.wind.y * 0.9;
       // keep the whole orbit on the page, even when the group hugs an edge
       const pad = 58;
       cx = clamp(cx, pad + R, ARENA_W - pad - R);
@@ -64,6 +67,26 @@ export class Bot {
       const na = a + this.spin * 0.75;
       tx = cx + Math.cos(na) * R;
       ty = cy + Math.sin(na) * R;
+    }
+
+    // The Other Brush: break the ring it is drawing, then ring it while it reels.
+    const rival = sim.boss && sim.boss.kind === 'rival' && sim.boss.spawn <= 0 ? sim.boss : null;
+    if (rival && rival.state === 1) {
+      const a = Math.atan2(p.y - rival.y, p.x - rival.x) + this.spin * 0.8;
+      tx = rival.x + Math.cos(a) * 62;
+      ty = rival.y + Math.sin(a) * 62;
+    } else if (rival && rival.state === 0 && sim.rivalTrail.length > 36) {
+      // go and break its line at the nearest point
+      let best = sim.rivalTrail[0], bd = Infinity;
+      for (const q of sim.rivalTrail) {
+        const dd = Math.hypot(q.x - p.x, q.y - p.y);
+        if (dd < bd) {
+          bd = dd;
+          best = q;
+        }
+      }
+      tx = best.x;
+      ty = best.y;
     }
 
     let mx = tx - p.x, my = ty - p.y;
@@ -87,11 +110,12 @@ export class Bot {
     // step off the line a darter (or the boss) is about to charge down
     for (const e of sim.enemies) {
       if (e.dead || e.spawn > 0) continue;
-      const aiming = (e.kind === 'darter' && (e.state === 1 || e.state === 2)) || (e.kind === 'boss' && (e.state === 3 || e.state === 4));
+      const aiming = (e.kind === 'darter' && (e.state === 1 || e.state === 2)) || (e.kind === 'boss' && (e.state === 3 || e.state === 4))
+        || (e.kind === 'rival' && (e.state === 3 || e.state === 4)) || (e.kind === 'eel' && (e.state === 1 || e.state === 2));
       if (!aiming) continue;
       const rx = p.x - e.x, ry = p.y - e.y;
       const along = rx * e.ax + ry * e.ay;
-      if (along < 0 || along > (e.kind === 'boss' ? 620 : 340)) continue;
+      if (along < 0 || along > (e.kind === 'darter' ? 340 : 620)) continue;
       const side = rx * -e.ay + ry * e.ax;
       const lane = e.r + 34;
       if (Math.abs(side) < lane) {
@@ -100,6 +124,21 @@ export class Bot {
         mx += -e.ay * sgn * w;
         my += e.ax * sgn * w;
       }
+    }
+    // keep out of standing water, which would wash the line away
+    for (const q of sim.puddles) {
+      const dx = p.x - q.x, dy = p.y - q.y, dd = Math.hypot(dx, dy) || 1;
+      const edge = dd - q.r;
+      if (edge < 46) {
+        const w = ((46 - edge) / 46) * 3.2 * this.skill;
+        mx += (dx / dd) * w;
+        my += (dy / dd) * w;
+      }
+    }
+    // a leech about to arrive along the line: flick it off
+    const headOdo = sim.trailOdo + sim.trailLen;
+    for (const e of sim.enemies) {
+      if (e.kind === 'leech' && e.state === 1 && !e.dead && headOdo - e.ay < 130) danger = Math.min(danger, 10);
     }
     for (const s of sim.shots) {
       const dx = p.x - s.x, dy = p.y - s.y, d = Math.hypot(dx, dy);

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Sim } from '../src/sim/sim';
 import { Bot } from '../src/sim/bot';
 import { circlePoly, pointInPoly, polyArea, roundness, segIntersect } from '../src/sim/geom';
-import { STAGES } from '../src/sim/data';
+import { SCROLLS, STAGES } from '../src/sim/data';
 
 const DT = 1 / 60;
 
@@ -64,8 +64,8 @@ describe('the line', () => {
 
 interface RunResult { won: boolean; time: number; stage: number; level: number; kills: number; loops: number; ensos: number; best: number; hits: number }
 
-function playRun(seed: number, depth: number, skill: number, maxMinutes = 14): RunResult {
-  const sim = new Sim({ seed, brush: 'bamboo', depth });
+function playRun(seed: number, depth: number, skill: number, maxMinutes = 14, scroll = 0): RunResult {
+  const sim = new Sim({ seed, brush: 'bamboo', depth, scroll });
   const bot = new Bot(skill);
   const maxSteps = maxMinutes * 60 * 60;
   for (let i = 0; i < maxSteps; i++) {
@@ -112,6 +112,75 @@ describe('whole runs under the bot', () => {
   });
 
   it('has a finale that can be reached', () => {
-    expect(STAGES[STAGES.length - 1].boss).toBe(true);
+    expect(STAGES[STAGES.length - 1].boss).toBe('boss');
+  });
+});
+
+describe('the later scrolls', () => {
+  it('every scroll has five stages and ends in its own finale', () => {
+    expect(SCROLLS.map((s) => s.stages.length)).toEqual([5, 5, 5]);
+    expect(SCROLLS.map((s) => s.stages[4].boss)).toEqual(['boss', 'eel', 'rival']);
+  });
+
+  it('plays the Rain and Gale scrolls under the bot without bad numbers', () => {
+    for (const scroll of [1, 2]) {
+      const rows = [1, 2, 3, 4, 5, 6].map((s) => playRun(s * 4391, 1, 1, 14, scroll));
+      console.log(`scroll ${scroll + 1}`);
+      console.table(rows.map((r) => ({ ...r, time: Math.round(r.time) })));
+      for (const r of rows) expect(r.loops).toBeGreaterThan(1);
+    }
+  });
+
+  it('a ring around one Bound Twin seals neither; a ring around both seals both', () => {
+    const make = () => {
+      const sim = new Sim({ seed: 5, brush: 'bamboo', depth: 1, scroll: 1 });
+      const mk = (sim as unknown as { makeEnemy: Function }).makeEnemy.bind(sim);
+      const a = mk('twin', 1000, 800, 0), b = mk('twin', 1400, 800, 0);
+      a.link = b.id;
+      b.link = a.id;
+      return { sim, a, b };
+    };
+    const ring = (x: number, y: number, r: number) => Array.from({ length: 24 }, (_, i) => ({ x: x + Math.cos((i / 24) * 6.2832) * r, y: y + Math.sin((i / 24) * 6.2832) * r }));
+    const one = make();
+    one.sim.closeLoop(ring(1000, 800, 80), 'brush');
+    expect(one.a.dead).toBe(false);
+    expect(one.b.dead).toBe(false);
+    const both = make();
+    both.sim.closeLoop(ring(1200, 800, 320), 'brush');
+    expect(both.a.dead).toBe(true);
+    expect(both.b.dead).toBe(true);
+  });
+
+  it('standing water washes the line away', () => {
+    const sim = new Sim({ seed: 9, brush: 'bamboo', depth: 1, scroll: 1 });
+    const p = sim.player;
+    for (let i = 0; i < 40; i++) sim.update(DT, { x: 1, y: 0, dash: false });
+    expect(sim.trail.length).toBeGreaterThan(5);
+    sim.puddles.push({ x: p.x, y: p.y, r: 90, age: 2, life: 30 });
+    for (let i = 0; i < 5; i++) sim.update(DT, { x: 1, y: 0, dash: false });
+    expect(sim.inPuddle).toBe(true);
+    expect(sim.trail.length).toBe(1);
+  });
+
+  it('The Undertow can only be sealed once its coils are gone', () => {
+    const sim = new Sim({ seed: 11, brush: 'bamboo', depth: 1, scroll: 1 });
+    sim.stage = 4;
+    sim.stageT = 0;
+    for (let i = 0; i < 60 * 9; i++) sim.update(DT, { x: 0, y: 0, dash: false });
+    const head = sim.boss!;
+    expect(head.kind).toBe('eel');
+    const coils = () => sim.enemies.filter((e) => e.kind === 'coil' && !e.dead);
+    expect(coils().length).toBeGreaterThan(8);
+    const ring = (x: number, y: number, r: number) => Array.from({ length: 24 }, (_, i) => ({ x: x + Math.cos((i / 24) * 6.2832) * r, y: y + Math.sin((i / 24) * 6.2832) * r }));
+    const hp = head.hp;
+    sim.player.inv = 99;
+    sim.closeLoop(ring(head.x, head.y, 50), 'brush');
+    expect(head.hp).toBe(hp); // still armoured by its body
+    for (const c of coils()) c.grace = 0;
+    sim.closeLoop(ring(head.x, head.y, 1200), 'brush'); // everything at once: coils go
+    expect(coils().length).toBe(0);
+    sim.update(DT, { x: 0, y: 0, dash: false });
+    sim.closeLoop(ring(head.x, head.y, 60), 'brush');
+    expect(head.hp).toBe(hp - 1);
   });
 });
